@@ -24,8 +24,6 @@ class Path(object):
     """Magical path object.
     This allow to manipulate path very easily."""
 
-    _components = None
-
     def __init__(self, path):
         """Create a new path object.
         You can build it using a string, a Path, or a list."""
@@ -36,24 +34,18 @@ class Path(object):
             else:
                 self.path = path
         elif isinstance(path, list):
-            # [ "foo", "bar" ] => "/foo/bar"
-            self.path = os.sep.join(path)
+            self.components = path
         else:
             # Assume it's a Path object
-            self.path = path.path
-            # Copy components so we do not split for nothing once again
             self.components = path.components
 
     @property
-    def components(self):
-        """Return components of the path in a list."""
-        if self._components is None:
-            self._components = self.path.split(os.sep)
-        return self._components
+    def path(self):
+        return os.sep.join(self.components)
 
-    @components.setter
-    def components(self, value):
-        self._components = value
+    @path.setter
+    def path(self, value):
+        self.components = value.split(os.sep)
 
     def __iter__(self):
         """Return an interator on components."""
@@ -63,7 +55,7 @@ class Path(object):
         return self.components[key]
 
     def __setitem__(self, key, value):
-        self.components
+        self.components[key] = value
 
     def __repr__(self):
         return "<" + self.__class__.__name__ + " " + hex(id(self)) + " for " + self.path + ">"
