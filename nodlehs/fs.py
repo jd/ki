@@ -23,7 +23,7 @@ fuse.fuse_python_api = (0, 2)
 import errno
 import os
 import stat
-import dulwich.index
+import time
 
 from .storage import *
 from .utils import Path
@@ -33,6 +33,7 @@ class Nodlehs(fuse.Fuse):
     """The Nodlehs file system."""
 
     def __init__(self, root):
+        self.start_time = time.time()
         self.storage = Storage(root)
         super(Nodlehs, self).__init__()
 
@@ -55,12 +56,21 @@ class Nodlehs(fuse.Fuse):
         s.st_uid = os.getuid()
         s.st_gid = os.getgid()
         s.st_size = len(obj)
-        # XXX accessing object is not that good.
+        # Special case: for the root directory, there's no object at all, so
+        # we return the start time as the ctime
+        if path == '/':
+            s.st_ctime = self.start_time
+        else:
+            # XXX accessing object is not that good.
+            try:
+                s.st_ctime = self.storage.current_record.object.commit_time
+            # No record or no commit_time on the current record
+            except (NoRecord, AttributeError):
+                s.st_ctime = 0
         try:
-            s.st_mtime = s.st_ctime = self.storage.current_record.object.commit_time
-        # No record or no commit_time
-        except (NoRecord, AttributeError):
-            s.st_mtime = s.st_ctime = 0
+            s.st_mtime = obj.mtime
+        except AttributeError:
+            s.st_mtime= s.st_ctime
         # TODO: store atime internally?
         s.st_atime = 0
         return s
