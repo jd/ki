@@ -112,7 +112,7 @@ class Nodlehs(fuse.Fuse):
         path = Path(path)
 
         try:
-            (directory_mode, directory) = self.next_record.root.child(path[:-1])
+            (directory_mode, directory) = self.storage.next_record.root.child(path[:-1])
         except NotDirectory:
             return -errno.ENOTDIR
         except NoChild:
