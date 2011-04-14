@@ -29,10 +29,6 @@ from .storage import *
 from .utils import Path
 
 
-class BadPath(Exception):
-    pass
-
-
 class Nodlehs(fuse.Fuse):
     """The Nodlehs file system."""
 
