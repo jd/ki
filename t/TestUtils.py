@@ -14,6 +14,7 @@ class TestUtils(unittest.TestCase):
         p = Path("/this/is/a/path/to//some/stuff/./and/..//..//it/goes/there")
         self.assert_(isinstance(p.components, list))
         self.assert_(len(p.components) == 9)
+        self.assert_(len(p) == 9)
         self.assert_(p.components == ['this', 'is', 'a', 'path', 'to', 'some', 'it', 'goes', 'there'])
 
     def test_Path_iter(self):

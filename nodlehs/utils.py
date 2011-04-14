@@ -57,5 +57,8 @@ class Path(object):
     def __setitem__(self, key, value):
         self.components[key] = value
 
+    def __len__(self):
+        return len(self.components)
+
     def __repr__(self):
         return "<" + self.__class__.__name__ + " " + hex(id(self)) + " for " + self.path + ">"
