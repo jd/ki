@@ -62,7 +62,8 @@ class Nodlehs(fuse.Fuse):
         # XXX accessing object is not that good.
         try:
             s.st_mtime = s.st_ctime = self.storage.current_record.object.commit_time
-        except NoRecord:
+        # No record or no commit_time
+        except (NoRecord, AttributeError):
             s.st_mtime = s.st_ctime = 0
         # TODO: store atime internally?
         s.st_atime = 0
@@ -89,7 +90,9 @@ class Nodlehs(fuse.Fuse):
         if flags & (os.O_RDONLY | os.O_RDWR) and not mode & stat.S_IREAD:
             return -errno.EACCESS
         # Write access check
-        if not self.storage.is_writable() or flags & (os.O_RDONLY | os.O_WRONLY) and not mode & stat.S_IWRITE:
+        if not self.storage.is_writable() \
+                or flags & (os.O_RDONLY | os.O_WRONLY) \
+                and not mode & stat.S_IWRITE:
             return -errno.EACCESS
 
     def read(self, path, size, offset):

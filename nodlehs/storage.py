@@ -154,10 +154,10 @@ class Record(Storable):
     def root(self):
         """The root directory associated with the record."""
         if self._root is None:
-            if self.object.tree:
+            try:
                 # Initialize with the commit tree
                 self._root = Directory(self.storage, self.storage[self.object.tree])
-            else:
+            except AttributeError:
                 # Initialize with a new tree
                 self._root = Directory(self.storage, Tree())
         return self._root
@@ -199,7 +199,9 @@ class Storage(Repo):
         the next record which is being prepared, or the overriding record if
         we have been asked to go somewhere else in time, or the storage
         head."""
-        return self.next_record or self.current_record_override or self.head
+        return self.next_record if self.next_record is not None \
+            else self.current_record_override if self.current_record_override is not None \
+            else self.head
 
     @property
     def head(self):
