@@ -138,6 +138,7 @@ class Directory(Storable):
     def add(self, name, mode, f):
         """Add a file with name and mode attributes to directory."""
         self.local_tree[name] = (mode, f)
+        self.mtime = time.time()
 
 
 class File(Storable):
@@ -170,6 +171,8 @@ class Record(Storable):
 
     def store(self):
         # Update time
+        # XXX maybe checking for root tree items mtime would be better and
+        # more accurate?
         self.object.author_time = \
             self.object.commit_time = \
             int(time.time())
