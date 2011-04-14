@@ -129,4 +129,6 @@ class Nodlehs(fuse.Fuse):
             return -errno.ENOENT
 
         # Add the file
-        directory.add(path[-1], mode, File(self, Blob()))
+        f = File(self, Blob())
+        f.mtime = time.time()
+        directory.add(path[-1], mode, f)
