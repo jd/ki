@@ -92,12 +92,6 @@ class Directory(Storable):
 
     def _child_from_name(self, name):
         """Get a child of the directory by its name."""
-        # If child is empty, we are asked for ourselves.
-        # This happens if the absolute path asked is /
-        # Yeah, that means we are the r00t directory, indeed.
-        if name is '':
-            return (stat.S_IFDIR, self)
-
         # First try to get the (mode, child) from the local tree
         try:
             return self.local_tree[name]
@@ -122,14 +116,22 @@ class Directory(Storable):
 
     def child(self, path):
         """Get the child of that directory that is at path."""
-        components = Path(path).components
-        (mode, child) = self._child_from_name(components[0])
+        # If len(path) is 0, we are asked for ourselves.
+        # This happens if the absolute path asked is /
+        # Yeah, that means we are the r00t directory, indeed.
 
-        if len(components) == 1:
+        path = Path(path)
+
+        if len(path) == 0:
+            return (stat.S_IFDIR, self)
+
+        (mode, child) = self._child_from_name(path[0])
+
+        if len(path) == 1:
             return (mode, child)
 
         if isinstance(child, Directory):
-            return child.child(Path(components[1:]))
+            return child.child(path[1:])
 
         raise NotDirectory(child)
 
