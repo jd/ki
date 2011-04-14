@@ -60,5 +60,13 @@ class Path(object):
     def __len__(self):
         return len(self.components)
 
+    def __add__(self, value):
+        if isinstance(value, Path):
+            return Path(self.components + value.components)
+        raise TypeError
+
+    def __eq__(self, value):
+        return self.components == value.components
+
     def __repr__(self):
         return "<" + self.__class__.__name__ + " " + hex(id(self)) + " for " + self.path + ">"

@@ -36,6 +36,11 @@ class TestUtils(unittest.TestCase):
         self.assert_(p[1] == "babar")
         self.assert_(p.path == "foo/babar")
 
+    def test_Path_eq(self):
+        self.assert_(Path("a/b") == Path("a/../a/b"))
+
+    def test_Path_add(self):
+        self.assert_(Path("a/b") + Path ("/c/d") == Path("a/b/c/d"))
 
 if __name__ == '__main__':
     unittest.main()
