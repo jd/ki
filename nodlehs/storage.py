@@ -153,6 +153,15 @@ class Record(Storable):
 
     _root = None
 
+    def __init__(self, storage, commit):
+        super(Record, self).__init__(storage, commit)
+        self.object.author = pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0]
+        self.object.committer = "Nodlehs"
+        self.object.message = "Nodlehs auto-commit"
+        self.object.author_timezone = \
+            self.object.commit_timezone = \
+            - time.timezone
+
     @property
     def root(self):
         """The root directory associated with the record."""
@@ -236,14 +245,6 @@ class Storage(Repo):
             except NoRecord:
                 # Create a record based on brand new commit!
                 self._next_record = Record(self, Commit())
-
-            # XXX move this away in Record? We should not access object directly.
-            self._next_record.object.author = pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0]
-            self._next_record.object.committer = "Nodlehs"
-            self._next_record.object.message = "Nodlehs auto-commit"
-            self._next_record.object.author_timezone = \
-                self._next_record.object.commit_timezone = \
-                - time.timezone
 
         return self._next_record
 
