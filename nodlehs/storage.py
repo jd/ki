@@ -22,6 +22,8 @@ from dulwich.repo import Repo
 from dulwich.objects import Blob, Commit, Tree, parse_timezone
 import stat
 import time
+import pwd
+import os
 
 
 class NoRecord(Exception):
@@ -232,9 +234,8 @@ class Storage(Repo):
                 # Create a record based on brand new commit!
                 self._next_record = Record(self, Commit())
 
-            # XXX get the real author!
             # XXX move this away in Record? We should not access object directly.
-            self._next_record.object.author = "jd <jd@jd.com>"
+            self._next_record.object.author = pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0]
             self._next_record.object.committer = "Nodlehs"
             self._next_record.object.message = "Nodlehs auto-commit"
             # XXX Set a real TZ
