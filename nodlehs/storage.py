@@ -241,10 +241,9 @@ class Storage(Repo):
             self._next_record.object.author = pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0]
             self._next_record.object.committer = "Nodlehs"
             self._next_record.object.message = "Nodlehs auto-commit"
-            # XXX Set a real TZ
             self._next_record.object.author_timezone = \
                 self._next_record.object.commit_timezone = \
-                parse_timezone('+0200')[0]
+                - time.timezone
 
         return self._next_record
 
