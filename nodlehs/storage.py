@@ -179,11 +179,6 @@ class Record(Storable):
         super(Record, self).store()
 
 
-class ReadOnly(Exception):
-    """Read only exception."""
-    pass
-
-
 class Storage(Repo):
     """Storage based on a repository."""
 
@@ -257,14 +252,3 @@ class Storage(Repo):
         self.next_record.store()
         self.next_record = None
         # XXX update head
-
-    def add_file(self, path, mode):
-        """Add a file to the repository."""
-        if not self.is_writable():
-            raise ReadOnly
-
-        path = Path(path)
-        # Get the directory which will own the file
-        (directory_mode, directory) = self.next_record.root.child(path[:-1])
-        # Add the file
-        directory.add(path[-1], mode, File(self, Blob()))

@@ -107,11 +107,17 @@ class Nodlehs(fuse.Fuse):
     def mknod(self, path, mode, dev):
         if not stat.S_ISREG(mode):
             return -errno.EINVAL
+        if not self.storage.is_writable():
+            return -errno.EROFS
+
+        path = Path(path)
+
         try:
-            self.storage.add_file(path, mode)
+            (directory_mode, directory) = self.next_record.root.child(path[:-1])
         except NotDirectory:
             return -errno.ENOTDIR
-        except ReadOnly:
-            return -errno.EROFS
         except NoChild:
             return -errno.ENOENT
+
+        # Add the file
+        directory.add(path[-1], mode, File(self, Blob()))
