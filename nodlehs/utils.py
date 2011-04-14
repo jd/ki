@@ -29,7 +29,9 @@ class Path(object):
         You can build it using a string, a Path, or a list."""
         if isinstance(path, str):
             path = os.path.normpath(path)
-            if path[0] == '/':
+            if path == '/':
+                self.components = []
+            elif path[0] == '/':
                 self.path = path[1:]
             else:
                 self.path = path

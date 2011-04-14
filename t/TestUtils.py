@@ -6,9 +6,10 @@ from nodlehs.utils import *
 class TestUtils(unittest.TestCase):
 
     def test_Path_init(self):
-        Path("/this/is/a/path/to//some/stuff/./and/..//..//it/goes/there")
-        Path(Path("/this/is/a/path/to//some/stuff/./and/..//..//it/goes/there"))
-        Path([ "can" "i" "haz" "a" "path"])
+        self.assert_(Path("/this/is/a/path/to//some/stuff/./and/..//..//it/goes/there"))
+        self.assert_(Path(Path("/this/is/a/path/to//some/stuff/./and/..//..//it/goes/there")))
+        self.assert_(Path([ "can" "i" "haz" "a" "path"]))
+        self.assert_(Path("/").components == [])
 
     def test_Path_components(self):
         p = Path("/this/is/a/path/to//some/stuff/./and/..//..//it/goes/there")
