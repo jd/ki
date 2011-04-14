@@ -67,7 +67,6 @@ class Nodlehs(fuse.Fuse):
 
     def readdir(self, path, offset):
         (mode, child) = self.storage.root.child(path)
-        print child
         if isinstance(child, Directory):
             yield fuse.Direntry('.')
             yield fuse.Direntry('..')
