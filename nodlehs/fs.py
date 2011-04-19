@@ -154,3 +154,19 @@ class Nodlehs(fuse.Operations):
         except NoChild:
             raise fuse.FuseOSError(errno.ENOENT)
 
+    def mkdir(self, path, mode):
+        if not self.storage.is_writable():
+            raise fuse.FuseOSError(errno.EROFS)
+
+        path = Path(path)
+
+        try:
+            (directory_mode, directory) = self.storage.next_record.root.child(path[:-1])
+        except NotDirectory:
+            raise fuse.FuseOSError(errno.ENOTDIR)
+        except NoChild:
+            raise fuse.FuseOSError(errno.ENOENT)
+
+        d = Directory(self.storage, Tree())
+        d.mtime = time.time()
+        directory.add(path[-1], stat.S_IFDIR | mode, d)
