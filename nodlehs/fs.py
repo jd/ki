@@ -160,3 +160,23 @@ class Nodlehs(fuse.Operations):
             raise fuse.FuseOSError(errno.EINVAL)
 
         return self._create(path, mode, File(self.storage, Blob()))
+
+    def rename(self, old, new):
+        if not self.storage.is_writable():
+            raise fuse.FuseOSError(errno.EROFS)
+
+        old = Path(old)
+        new = Path(new)
+
+        try:
+            (old_directory_mode, old_directory) = self.storage.next_record.root.child(old[:-1])
+            (new_directory_mode, new_directory) = self.storage.next_record.root.child(new[:-1])
+            (item_mode, item) = old_directory.child(old[-1])
+            old_directory.remove(old[-1])
+        except NotDirectory:
+            raise fuse.FuseOSError(errno.ENOTDIR)
+        except NoChild:
+            raise fuse.FuseOSError(errno.ENOENT)
+
+        new_directory.add(new[-1], item_mode, item)
+
