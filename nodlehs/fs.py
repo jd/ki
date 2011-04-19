@@ -113,29 +113,6 @@ class Nodlehs(fuse.Operations):
 
         return str(child)[offset:offset + size]
 
-    def create(self, path, mode):
-        return self.mknod(path, mode, None)
-
-    def mknod(self, path, mode, dev):
-        if not stat.S_ISREG(mode):
-            raise fuse.FuseOSError(errno.EINVAL)
-        if not self.storage.is_writable():
-            raise fuse.FuseOSError(errno.EROFS)
-
-        path = Path(path)
-
-        try:
-            (directory_mode, directory) = self.storage.next_record.root.child(path[:-1])
-        except NotDirectory:
-            raise fuse.FuseOSError(errno.ENOTDIR)
-        except NoChild:
-            raise fuse.FuseOSError(errno.ENOENT)
-
-        # Add the file
-        f = File(self.storage, Blob())
-        f.mtime = time.time()
-        directory.add(path[-1], mode, f)
-
     def unlink(self, path):
         if not self.storage.is_writable():
             raise fuse.FuseOSError(errno.EROFS)
@@ -154,7 +131,7 @@ class Nodlehs(fuse.Operations):
         except NoChild:
             raise fuse.FuseOSError(errno.ENOENT)
 
-    def mkdir(self, path, mode):
+    def _create(self, path, mode, obj):
         if not self.storage.is_writable():
             raise fuse.FuseOSError(errno.EROFS)
 
@@ -167,6 +144,18 @@ class Nodlehs(fuse.Operations):
         except NoChild:
             raise fuse.FuseOSError(errno.ENOENT)
 
-        d = Directory(self.storage, Tree())
-        d.mtime = time.time()
-        directory.add(path[-1], stat.S_IFDIR | mode, d)
+        obj.mtime = time.time()
+        directory.add(path[-1], mode, obj)
+
+    def mkdir(self, path, mode):
+        return self._create(path, stat.S_IFDIR | mode, Directory(self.storage, Tree()))
+
+    def create(self, path, mode):
+        return self._create(path, mode, File(self.storage, Blob()))
+
+    def mknod(self, path, mode, dev):
+        if not stat.S_ISREG(mode):
+            raise fuse.FuseOSError(errno.EINVAL)
+
+        return self._create(path, mode, File(self.storage, Blob()))
+
