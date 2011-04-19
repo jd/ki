@@ -173,8 +173,11 @@ class File(Storable):
         self.data = StringIO(obj.data)
         super(File, self).__init__(storage, obj)
 
+    def __len__(self):
+        return len(self.data.getvalue())
+
     def __str__(self):
-        return self.object.__str__()
+        return self.data.getvalue()
 
 class Record(Storable):
     """A commit record."""

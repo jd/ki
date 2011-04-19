@@ -43,6 +43,7 @@ class Nodlehs(fuse.Operations):
     def __init__(self, root):
         self.start_time = time.time()
         self.storage = Storage(root)
+        self.fds = {}
         super(Nodlehs, self).__init__()
 
     def getattr(self, path, fh=None):
@@ -83,13 +84,36 @@ class Nodlehs(fuse.Operations):
         s['st_atime'] = 0
         return s
 
-    def readdir(self, path, offset):
-        (mode, child) = self.storage.root.child(path)
-        if isinstance(child, Directory):
-            yield '.'
-            yield '..'
-            for entry in child:
-                yield entry[1]
+    def to_fd(self, item):
+        """Return a fd for item."""
+        fd = len(self.fds)
+        self.fds[fd] = item
+        return fd
+
+    def opendir(self, path):
+        try:
+            (mode, child) = self.storage.root.child(path)
+        except NotDirectory:
+            raise FuseOSError(errno.ENOTDIR)
+        except NoChild:
+            raise fuse.FuseOSError(errno.ENOENT)
+
+        if not isinstance(child, Directory):
+            raise FuseOSError(errno.ENOTDIR)
+
+        return self.to_fd(child)
+
+    def readdir(self, path, fh):
+        yield '.'
+        yield '..'
+        for entry in self.fds[fh]:
+            yield entry[1]
+
+    def release(self, path, fh):
+        del self.fds[fh]
+
+    def releasedir(self, path, fh):
+        del self.fds[fh]
 
     def open(self, path, flags):
         try:
@@ -108,21 +132,7 @@ class Nodlehs(fuse.Operations):
                 and not mode & stat.S_IWRITE:
             raise fuse.FuseOSError(errno.EACCESS)
 
-        return 0
-
-    def read(self, path, size, offset, fh):
-        try:
-            (mode, child) = self.storage.root.child(path)
-        except NotDirectory:
-            raise fuse.FuseOSError(errno.ENOTDIR)
-        except NoChild:
-            raise fuse.FuseOSError(errno.ENOENT)
-
-        if not isinstance(child, File):
-            raise fuse.FuseOSError(errno.EINVAL)
-
-        child.data.seek(offset)
-        return child.data.read(size)
+        return self.to_fd(child)
 
     @rw
     def unlink(self, path):
@@ -156,7 +166,7 @@ class Nodlehs(fuse.Operations):
         obj.mtime = time.time()
         directory.add(path[-1], mode, obj)
 
-        return 0
+        return self.to_fd(obj)
 
     def mkdir(self, path, mode):
         return self._create(path, stat.S_IFDIR | mode, Directory(self.storage, Tree()))
@@ -186,6 +196,7 @@ class Nodlehs(fuse.Operations):
             raise fuse.FuseOSError(errno.ENOENT)
 
         new_directory.add(new[-1], item_mode, item)
+
 
     @rw
     def chmod(self, path, mode):
@@ -218,18 +229,38 @@ class Nodlehs(fuse.Operations):
 
         target_directory.add(target[-1], source_mode, source)
 
+    def _resolve(self, path, fh=None):
+        """Resolve a file based on fh or path."""
+        if fh is None:
+            try:
+                (mode, child) = self.storage.root.child(Path(path))
+            except NotDirectory:
+                raise fuse.FuseOSError(errno.ENOTDIR)
+            except NoChild:
+                raise fuse.FuseOSError(errno.ENOENT)
+            if not isinstance(child, File):
+                raise fuse.FuseOSError(errno.EINVAL)
+            return child
+        return self.fds[fh]
+
+    def read(self, path, size, offset, fh):
+        child = self._resolve(path, fh)
+        child.data.seek(offset)
+        return child.data.read(size)
+
     @rw
     def write(self, path, data, offset, fh=None):
-        try:
-            (mode, child) = self.storage.root.child(path)
-        except NotDirectory:
-            raise fuse.FuseOSError(errno.ENOTDIR)
-        except NoChild:
-            raise fuse.FuseOSError(errno.ENOENT)
-
-        if not isinstance(child, File):
-            raise fuse.FuseOSError(errno.EINVAL)
-
+        child = self._resolve(path, fh)
         child.data.seek(offset)
         child.data.write(data)
-        print child.data.getvalue()
+        return len(data)
+
+    @rw
+    def truncate(self, path, length, fh=None):
+        print self.fds
+        print fh
+        print path
+        child = self._resolve(path, fh)
+        print repr(child)
+        return child.data.truncate(length)
+
