@@ -162,6 +162,7 @@ class Directory(Storable):
             except KeyError:
                 pass
 
+        self.mtime = time.time()
 
 class File(Storable):
     """A file."""
