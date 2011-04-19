@@ -180,3 +180,20 @@ class Nodlehs(fuse.Operations):
 
         new_directory.add(new[-1], item_mode, item)
 
+    def chmod(self, path, mode):
+        if not self.storage.is_writable():
+            raise fuse.FuseOSError(errno.EROFS)
+
+        path = Path(path)
+
+        try:
+            (directory_mode, directory) = self.storage.next_record.root.child(path[:-1])
+            (item_mode, item) = directory.child(path[-1])
+            directory.remove(path[-1])
+        except NotDirectory:
+            raise fuse.FuseOSError(errno.ENOTDIR)
+        except NoChild:
+            raise fuse.FuseOSError(errno.ENOENT)
+
+        directory.add(path[-1], mode, item)
+
