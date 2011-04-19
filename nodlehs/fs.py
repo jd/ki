@@ -131,6 +131,8 @@ class Nodlehs(fuse.Operations):
         except NoChild:
             raise fuse.FuseOSError(errno.ENOENT)
 
+    rmdir = unlink
+
     def _create(self, path, mode, obj):
         if not self.storage.is_writable():
             raise fuse.FuseOSError(errno.EROFS)
@@ -158,4 +160,3 @@ class Nodlehs(fuse.Operations):
             raise fuse.FuseOSError(errno.EINVAL)
 
         return self._create(path, mode, File(self.storage, Blob()))
-
