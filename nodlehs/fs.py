@@ -197,3 +197,21 @@ class Nodlehs(fuse.Operations):
 
         directory.add(path[-1], mode, item)
 
+    def link(self, target, source):
+        if not self.storage.is_writable():
+            raise fuse.FuseOSError(errno.EROFS)
+
+        target = Path(target)
+        source = Path(source)
+
+        try:
+            (source_mode, source) = self.storage.next_record.root.child(source)
+            (target_directory_mode, target_directory) = \
+                self.storage.next_record.root.child(directory[-1])
+        except NotDirectory:
+            raise fuse.FuseOSError(errno.ENOTDIR)
+        except NoChild:
+            raise fuse.FuseOSError(errno.ENOENT)
+
+        target_directory.add(target[-1], source_mode, source)
+
