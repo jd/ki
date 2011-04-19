@@ -245,15 +245,14 @@ class Nodlehs(fuse.Operations):
 
     def read(self, path, size, offset, fh):
         child = self._resolve(path, fh)
-        child.data.seek(offset)
-        return child.data.read(size)
+        child.seek(offset)
+        return child.read(size)
 
     @rw
     def write(self, path, data, offset, fh=None):
         child = self._resolve(path, fh)
-        child.data.seek(offset)
-        child.data.write(data)
-        return len(data)
+        child.seek(offset)
+        return child.write(data)
 
     @rw
     def truncate(self, path, length, fh=None):
@@ -262,5 +261,5 @@ class Nodlehs(fuse.Operations):
         print path
         child = self._resolve(path, fh)
         print repr(child)
-        return child.data.truncate(length)
+        return child.truncate(length)
 

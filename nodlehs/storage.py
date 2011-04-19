@@ -170,18 +170,33 @@ class File(Storable):
     """A file."""
 
     def __init__(self, storage, obj):
-        self.data = StringIO(obj.data)
+        self._data = StringIO(obj.data)
         super(File, self).__init__(storage, obj)
 
     def __len__(self):
-        return len(self.data.getvalue())
+        return len(self._data.getvalue())
 
     def __str__(self):
-        return self.data.getvalue()
+        return self._data.getvalue()
+
+    def seek(self, offset):
+        return self._data.seek(offset)
+
+    def read(self, value):
+        return self._data.read(value)
+
+    def write(self, data):
+        self._data.write(data)
+        self.mtime = time.time()
+        return len(data)
+
+    def truncate(self, size=None):
+        self._data.truncate(size)
+        self.mtime = time.time()
 
     def store(self):
         # Update object data
-        self.object.set_raw_string(self.data.getvalue())
+        self.object.set_raw_string(self._data.getvalue())
         # Store
         super(Record, self).store()
 
