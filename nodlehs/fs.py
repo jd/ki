@@ -24,9 +24,17 @@ import errno
 import os
 import stat
 import time
+from decorator import decorator
 
 from .storage import *
 from .utils import Path
+
+@decorator
+def rw(func, self, *args, **kw):
+    if not self.storage.is_writable():
+        raise fuse.FuseOSError(errno.EROFS)
+
+    return func(self, *args, **kw)
 
 
 class Nodlehs(fuse.Operations):
