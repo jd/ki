@@ -179,6 +179,13 @@ class File(Storable):
     def __str__(self):
         return self.data.getvalue()
 
+    def store(self):
+        # Update object data
+        self.object.set_raw_string(self.data.getvalue())
+        # Store
+        super(Record, self).store()
+
+
 class Record(Storable):
     """A commit record."""
 
