@@ -243,7 +243,7 @@ class Nodlehs(fuse.Operations):
             return child
         return self.fds[fh]
 
-    def read(self, path, size, offset, fh):
+    def read(self, path, size, offset, fh=None):
         child = self._resolve(path, fh)
         child.seek(offset)
         return child.read(size)
