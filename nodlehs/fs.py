@@ -132,7 +132,7 @@ class Nodlehs(fuse.Operations):
             raise fuse.FuseOSError(errno.ENOENT)
 
         # Add the file
-        f = File(self, Blob())
+        f = File(self.storage, Blob())
         f.mtime = time.time()
         directory.add(path[-1], mode, f)
 
