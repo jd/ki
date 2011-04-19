@@ -121,10 +121,8 @@ class Nodlehs(fuse.Operations):
 
         return str(child)[offset:offset + size]
 
+    @rw
     def unlink(self, path):
-        if not self.storage.is_writable():
-            raise fuse.FuseOSError(errno.EROFS)
-
         path = Path(path)
 
         try:
@@ -141,10 +139,8 @@ class Nodlehs(fuse.Operations):
 
     rmdir = unlink
 
+    @rw
     def _create(self, path, mode, obj):
-        if not self.storage.is_writable():
-            raise fuse.FuseOSError(errno.EROFS)
-
         path = Path(path)
 
         try:
@@ -169,10 +165,8 @@ class Nodlehs(fuse.Operations):
 
         return self._create(path, mode, File(self.storage, Blob()))
 
+    @rw
     def rename(self, old, new):
-        if not self.storage.is_writable():
-            raise fuse.FuseOSError(errno.EROFS)
-
         old = Path(old)
         new = Path(new)
 
@@ -188,10 +182,8 @@ class Nodlehs(fuse.Operations):
 
         new_directory.add(new[-1], item_mode, item)
 
+    @rw
     def chmod(self, path, mode):
-        if not self.storage.is_writable():
-            raise fuse.FuseOSError(errno.EROFS)
-
         path = Path(path)
 
         try:
@@ -205,10 +197,8 @@ class Nodlehs(fuse.Operations):
 
         directory.add(path[-1], mode, item)
 
+    @rw
     def link(self, target, source):
-        if not self.storage.is_writable():
-            raise fuse.FuseOSError(errno.EROFS)
-
         target = Path(target)
         source = Path(source)
 
