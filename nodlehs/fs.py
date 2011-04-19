@@ -121,7 +121,8 @@ class Nodlehs(fuse.Operations):
         if not isinstance(child, File):
             raise fuse.FuseOSError(errno.EINVAL)
 
-        return str(child)[offset:offset + size]
+        child.data.seek(offset)
+        return child.data.read(size)
 
     @rw
     def unlink(self, path):
@@ -154,6 +155,8 @@ class Nodlehs(fuse.Operations):
 
         obj.mtime = time.time()
         directory.add(path[-1], mode, obj)
+
+        return 0
 
     def mkdir(self, path, mode):
         return self._create(path, stat.S_IFDIR | mode, Directory(self.storage, Tree()))
@@ -215,3 +218,18 @@ class Nodlehs(fuse.Operations):
 
         target_directory.add(target[-1], source_mode, source)
 
+    @rw
+    def write(self, path, data, offset, fh=None):
+        try:
+            (mode, child) = self.storage.root.child(path)
+        except NotDirectory:
+            raise fuse.FuseOSError(errno.ENOTDIR)
+        except NoChild:
+            raise fuse.FuseOSError(errno.ENOENT)
+
+        if not isinstance(child, File):
+            raise fuse.FuseOSError(errno.EINVAL)
+
+        child.data.seek(offset)
+        child.data.write(data)
+        print child.data.getvalue()
