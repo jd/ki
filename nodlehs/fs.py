@@ -256,10 +256,5 @@ class Nodlehs(fuse.Operations):
 
     @rw
     def truncate(self, path, length, fh=None):
-        print self.fds
-        print fh
-        print path
-        child = self._resolve(path, fh)
-        print repr(child)
-        return child.truncate(length)
+        return self._resolve(path, fh).truncate(length)
 
