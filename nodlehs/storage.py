@@ -73,9 +73,11 @@ class Storable(object):
 class Directory(Storable):
     """A directory."""
 
-    # This is locally modified/added files which will belong to our tree
-    # when we will dump ourselves.
-    local_tree = {}
+    def __init__(self, storage, obj):
+        # This is locally modified/added files which will belong to our tree
+        # when we will dump ourselves.
+        self.local_tree = {}
+        super(Directory, self).__init__(storage, obj)
 
     def store(self):
         for name, info in self.local_tree.iteritems():
