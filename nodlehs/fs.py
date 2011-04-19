@@ -108,7 +108,9 @@ class Nodlehs(fuse.Operations):
                 and not mode & stat.S_IWRITE:
             raise fuse.FuseOSError(errno.EACCESS)
 
-    def read(self, path, size, offset):
+        return 0
+
+    def read(self, path, size, offset, fh):
         try:
             (mode, child) = self.storage.root.child(path)
         except NotDirectory:
