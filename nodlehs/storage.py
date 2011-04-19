@@ -140,6 +140,26 @@ class Directory(Storable):
         self.local_tree[name] = (mode, f)
         self.mtime = time.time()
 
+    def remove(self, name):
+        """Remove a file with name from directory."""
+        try:
+            # Try to delete in the local tree
+            del self.local_tree[name]
+        except KeyError:
+            # The file was not in local_tree, try in self.object and raises
+            # if it raises.
+            try:
+                del self.object[name]
+            except KeyError:
+                raise NoChild(name)
+        else:
+            # We succeeded to delete in local_tree, just try to delete in
+            # self.object to be sure we deleted definitively.
+            try:
+                del self.object[name]
+            except KeyError:
+                pass
+
 
 class File(Storable):
     """A file."""
