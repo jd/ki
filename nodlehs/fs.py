@@ -135,3 +135,22 @@ class Nodlehs(fuse.Operations):
         f = File(self, Blob())
         f.mtime = time.time()
         directory.add(path[-1], mode, f)
+
+    def unlink(self, path):
+        if not self.storage.is_writable():
+            raise fuse.FuseOSError(errno.EROFS)
+
+        path = Path(path)
+
+        try:
+            (directory_mode, directory) = self.storage.next_record.root.child(path[:-1])
+        except NotDirectory:
+            raise fuse.FuseOSError(errno.ENOTDIR)
+        except NoChild:
+            raise fuse.FuseOSError(errno.ENOENT)
+
+        try:
+            directory.remove(path[-1])
+        except NoChild:
+            raise fuse.FuseOSError(errno.ENOENT)
+
