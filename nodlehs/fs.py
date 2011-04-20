@@ -47,12 +47,7 @@ class Nodlehs(fuse.Operations):
         super(Nodlehs, self).__init__()
 
     def getattr(self, path, fh=None):
-        try:
-            (mode, obj) = self.storage.root.child(path)
-        except NotDirectory:
-            raise fuse.FuseOSError(errno.ENOTDIR)
-        except NoChild:
-            raise fuse.FuseOSError(errno.ENOENT)
+        (mode, child) = self._resolve(path, fh)
         s = {}
         # Directories have no mode, so set one by default
         # XXX This mode should be a config option?
@@ -64,7 +59,7 @@ class Nodlehs(fuse.Operations):
         s['st_nlink'] = 1
         s['st_uid'] = os.getuid()
         s['st_gid'] = os.getgid()
-        s['st_size'] = len(obj)
+        s['st_size'] = len(child)
         # Special case: for the root directory, there's no object at all, so
         # we return the start time as the ctime
         if path == '/':
@@ -77,36 +72,26 @@ class Nodlehs(fuse.Operations):
             except (NoRecord, AttributeError):
                 s['st_ctime'] = 0
         try:
-            s['st_mtime'] = obj.mtime
+            s['st_mtime'] = child.mtime
         except AttributeError:
             s['st_mtime']= s['st_ctime']
         # TODO: store atime internally?
         s['st_atime'] = 0
         return s
 
-    def to_fd(self, item):
+    def to_fd(self, mode, item):
         """Return a fd for item."""
         fd = len(self.fds)
-        self.fds[fd] = item
+        self.fds[fd] = (mode, item)
         return fd
 
     def opendir(self, path):
-        try:
-            (mode, child) = self.storage.root.child(path)
-        except NotDirectory:
-            raise FuseOSError(errno.ENOTDIR)
-        except NoChild:
-            raise fuse.FuseOSError(errno.ENOENT)
+        return self.to_fd(*self._get_child(path, Directory))
 
-        if not isinstance(child, Directory):
-            raise FuseOSError(errno.ENOTDIR)
-
-        return self.to_fd(child)
-
-    def readdir(self, path, fh):
+    def readdir(self, path, fh=None):
         yield '.'
         yield '..'
-        for entry in self.fds[fh]:
+        for entry in self._resolve(path, fh, Directory)[1]:
             yield entry[1]
 
     def release(self, path, fh):
@@ -116,12 +101,7 @@ class Nodlehs(fuse.Operations):
         del self.fds[fh]
 
     def open(self, path, flags):
-        try:
-            (mode, child) = self.storage.root.child(path)
-        except NotDirectory:
-            raise fuse.FuseOSError(errno.ENOTDIR)
-        except NoChild:
-            raise fuse.FuseOSError(errno.ENOENT)
+        (mode, child) = self._get_child(path, File)
 
         # Read access check
         if flags & (os.O_RDONLY | os.O_RDWR) and not mode & stat.S_IREAD:
@@ -132,19 +112,12 @@ class Nodlehs(fuse.Operations):
                 and not mode & stat.S_IWRITE:
             raise fuse.FuseOSError(errno.EACCESS)
 
-        return self.to_fd(child)
+        return self.to_fd(mode, child)
 
     @rw
     def unlink(self, path):
         path = Path(path)
-
-        try:
-            (directory_mode, directory) = self.storage.next_record.root.child(path[:-1])
-        except NotDirectory:
-            raise fuse.FuseOSError(errno.ENOTDIR)
-        except NoChild:
-            raise fuse.FuseOSError(errno.ENOENT)
-
+        (directory_mode, directory) = self._get_child(path[:-1], Directory)
         try:
             directory.remove(path[-1])
         except NoChild:
@@ -155,21 +128,14 @@ class Nodlehs(fuse.Operations):
     @rw
     def _create(self, path, mode, obj):
         path = Path(path)
-
-        try:
-            (directory_mode, directory) = self.storage.next_record.root.child(path[:-1])
-        except NotDirectory:
-            raise fuse.FuseOSError(errno.ENOTDIR)
-        except NoChild:
-            raise fuse.FuseOSError(errno.ENOENT)
-
+        (directory_mode, directory) = self._get_child(path[:-1], Directory)
         obj.mtime = time.time()
         directory.add(path[-1], mode, obj)
 
-        return self.to_fd(obj)
+        return self.to_fd(mode, obj)
 
     def mkdir(self, path, mode):
-        return self._create(path, stat.S_IFDIR | mode, Directory(self.storage, Tree()))
+        self._create(path, stat.S_IFDIR | mode, Directory(self.storage, Tree()))
 
     def create(self, path, mode):
         return self._create(path, mode, File(self.storage, Blob()))
@@ -229,32 +195,37 @@ class Nodlehs(fuse.Operations):
 
         target_directory.add(target[-1], source_mode, source)
 
-    def _resolve(self, path, fh=None):
+    def _get_child(self, path, cls=None):
+        """Get the mode and child of path.
+        Also check that child is instance of cls."""
+        try:
+            (mode, child) = self.storage.root.child(Path(path))
+        except NotDirectory:
+            raise fuse.FuseOSError(errno.ENOTDIR)
+        except NoChild:
+            raise fuse.FuseOSError(errno.ENOENT)
+        if cls is not None and not isinstance(child, cls):
+            raise fuse.FuseOSError(errno.EINVAL)
+        return (mode, child)
+
+    def _resolve(self, path, fh=None, cls=None):
         """Resolve a file based on fh or path."""
         if fh is None:
-            try:
-                (mode, child) = self.storage.root.child(Path(path))
-            except NotDirectory:
-                raise fuse.FuseOSError(errno.ENOTDIR)
-            except NoChild:
-                raise fuse.FuseOSError(errno.ENOENT)
-            if not isinstance(child, File):
-                raise fuse.FuseOSError(errno.EINVAL)
-            return child
+            return self._get_child(path, cls)
         return self.fds[fh]
 
     def read(self, path, size, offset, fh=None):
-        child = self._resolve(path, fh)
+        (mode, child) = self._resolve(path, fh, File)
         child.seek(offset)
         return child.read(size)
 
     @rw
     def write(self, path, data, offset, fh=None):
-        child = self._resolve(path, fh)
+        (mode, child) = self._resolve(path, fh, File)
         child.seek(offset)
         return child.write(data)
 
     @rw
     def truncate(self, path, length, fh=None):
-        return self._resolve(path, fh).truncate(length)
+        return self._resolve(path, fh, File)[1].truncate(length)
 
