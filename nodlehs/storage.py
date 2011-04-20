@@ -51,9 +51,6 @@ class NotDirectory(Exception):
 
 class Storable(object):
 
-    # The internal object
-    object = None
-
     def __init__(self, storage, obj):
         self.storage = storage
         self.object = obj
@@ -222,10 +219,9 @@ class Symlink(File):
 class Record(Storable):
     """A commit record."""
 
-    _root = None
-
     def __init__(self, storage, commit):
         super(Record, self).__init__(storage, commit)
+        self._root = None
         self.object.author = pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0]
         self.object.committer = "Nodlehs"
         self.object.message = "Nodlehs auto-commit"
@@ -267,11 +263,10 @@ class Record(Storable):
 class Storage(Repo):
     """Storage based on a repository."""
 
-    current_record_override = None
-    # The next record
-    _next_record = None
-
     def __init__(self, root):
+        self.current_record_override = None
+        # The next record
+        self._next_record = None
         # XXX Timer should be configurable.
         self._commiter = threading.Timer(300.0, self.commit)
         super(Storage, self).__init__(root)
