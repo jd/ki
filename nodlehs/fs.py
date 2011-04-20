@@ -119,14 +119,8 @@ class Nodlehs(fuse.Operations):
     def open(self, path, flags):
         (mode, child) = self._get_child(path, File)
 
-        # Read access check
-        if flags & (os.O_RDONLY | os.O_RDWR) and not mode & stat.S_IREAD:
-            raise FuseOSError(errno.EACCESS)
-        # Write access check
-        if not self.storage.is_writable() \
-                or flags & (os.O_RDONLY | os.O_WRONLY) \
-                and not mode & stat.S_IWRITE:
-            raise fuse.FuseOSError(errno.EACCESS)
+        if not self.storage.is_writable():
+            raise fuse.FuseOSError(errno.EROFS)
 
         return self.to_fd(mode, child)
 
