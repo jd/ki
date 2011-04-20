@@ -24,6 +24,7 @@ import errno
 import os
 import stat
 import time
+import posix
 from decorator import decorator
 
 from .storage import *
@@ -45,6 +46,17 @@ class Nodlehs(fuse.Operations):
         self.storage = Storage(root)
         self.fds = {}
         super(Nodlehs, self).__init__()
+
+    def access(self, path, amode):
+        (mode, child) = self._get_child(path, File)
+
+        if amode & posix.W_OK and not self.storage.is_writable():
+            raise fuse.FuseOSError(errno.EACCESS)
+        if amode & posix.X_OK:
+            if not mode & S_IXUSR:
+                raise fuse.FuseOSError(errno.EACCESS)
+
+        return 0
 
     def getattr(self, path, fh=None):
         (mode, child) = self._resolve(path, fh)
