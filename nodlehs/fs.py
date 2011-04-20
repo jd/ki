@@ -256,3 +256,9 @@ class Nodlehs(fuse.Operations):
         else:
             child.atime = times[0]
             child.mtime = times[1]
+
+    def fsync(self, path, datasync, fh=None):
+        (mode, child) = self._resolve(path, fh)
+        child.store()
+
+    fsyncdir = fsync
