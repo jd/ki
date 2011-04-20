@@ -48,24 +48,22 @@ class Nodlehs(fuse.Operations):
         super(Nodlehs, self).__init__()
 
     def access(self, path, amode):
-        (mode, child) = self._get_child(path, File)
+        (mode, child) = self._get_child(path)
 
         if amode & posix.W_OK and not self.storage.is_writable():
-            raise fuse.FuseOSError(errno.EACCESS)
+            raise fuse.FuseOSError(errno.EACCES)
         if amode & posix.X_OK:
-            if not mode & S_IXUSR:
-                raise fuse.FuseOSError(errno.EACCESS)
-
-        return 0
+            if not mode & stat.S_IXUSR and not mode & stat.S_IFDIR:
+                raise fuse.FuseOSError(errno.EACCES)
 
     def getattr(self, path, fh=None):
         (mode, child) = self._resolve(path, fh)
         s = {}
         # Directories have no mode, so set one by default
         # XXX This mode should be a config option?
-        if mode & stat.S_IFDIR:
+        if stat.S_ISDIR(mode):
             mode |= (stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP)
-        elif mode & stat.S_IFLNK:
+        elif stat.S_ISLNK(mode):
             mode |= (stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
                      | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP
                      | stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH)
