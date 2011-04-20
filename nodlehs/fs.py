@@ -53,6 +53,10 @@ class Nodlehs(fuse.Operations):
         # XXX This mode should be a config option?
         if mode & stat.S_IFDIR:
             mode |= (stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP)
+        elif mode & stat.S_IFLNK:
+            mode |= (stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
+                     | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP
+                     | stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH)
         s['st_mode'] = mode
         s['st_ino'] = 0
         s['st_dev'] = 0
@@ -229,3 +233,11 @@ class Nodlehs(fuse.Operations):
     def truncate(self, path, length, fh=None):
         return self._resolve(path, fh, File)[1].truncate(length)
 
+    @rw
+    def symlink(self, target, source):
+        target = Path(target)
+        (target_directory_mode, target_directory) = self._get_child(target[:-1])
+        target_directory.add(target[-1], stat.S_IFLNK, Symlink(self.storage, Blob(), source))
+
+    def readlink(self, path):
+        return str(self._get_child(path, Symlink)[1])

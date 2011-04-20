@@ -201,6 +201,23 @@ class File(Storable):
         super(Record, self).store()
 
 
+class Symlink(File):
+    """A symlink."""
+
+    def __init__(self, storage, obj, target):
+        super(Symlink, self).__init__(storage, obj)
+        self.write(target)
+
+    @property
+    def target(self):
+        return self._data.getvalue()
+
+    @target.setter
+    def target(self, value):
+        self._data.truncate(0)
+        self._data.write(value)
+
+
 class Record(Storable):
     """A commit record."""
 
