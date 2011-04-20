@@ -26,6 +26,7 @@ import stat
 import time
 import pwd
 import os
+import threading
 
 
 class NoRecord(Exception):
@@ -269,6 +270,11 @@ class Storage(Repo):
     current_record_override = None
     # The next record
     _next_record = None
+
+    def __init__(self, root):
+        # XXX Timer should be configurable.
+        self._commiter = threading.Timer(300.0, self.commit)
+        super(Storage, self).__init__(root)
 
     @property
     def current_record(self):
