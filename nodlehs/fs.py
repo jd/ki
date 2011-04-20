@@ -248,6 +248,7 @@ class Nodlehs(fuse.Operations):
     def readlink(self, path):
         return str(self._get_child(path, Symlink)[1])
 
+    @rw
     def utimens(self, path, times=None):
         """Times is a (atime, mtime) tuple. If None use current time."""
         (mode, child) = self._get_child(path, File)
