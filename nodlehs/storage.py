@@ -324,5 +324,4 @@ class Storage(Repo):
         if self._next_record is not None:
             self._next_record.store()
             self.refs['refs/heads/master'] = self._next_record.id
-            print "commited"
             self._next_record = None
