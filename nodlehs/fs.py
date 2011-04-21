@@ -81,7 +81,7 @@ class Nodlehs(fuse.Operations):
         else:
             # XXX accessing object is not that good.
             try:
-                s['st_ctime'] = self.storage.current_record.object.commit_time
+                s['st_ctime'] = self.storage.head().object.commit_time
             # No record or no commit_time on the current record
             except (NoRecord, AttributeError):
                 s['st_ctime'] = 0
