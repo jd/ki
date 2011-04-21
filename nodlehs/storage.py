@@ -110,7 +110,7 @@ class Directory(Storable):
         # Store returned file in local_tree: if it is ever modified, we will
         # be able to store its new content (new blob id) automagically.
         if ret:
-            local_tree[name] = ret
+            self.local_tree[name] = ret
             return ret
 
         raise UnknownObjectType(child)
@@ -268,31 +268,9 @@ class Storage(Repo):
         # The next record
         self._next_record = None
         # XXX Timer should be configurable.
-        self._commiter = threading.Timer(300.0, self.commit)
+        self._commiter = threading.Timer(10.0, self.commit)
         super(Storage, self).__init__(root)
-
-    @property
-    def current_record(self):
-        """The current storage record state.
-
-        This is the storage state the user wants to see. This returns either
-        the next record which is being prepared, or the overriding record if
-        we have been asked to go somewhere else in time, or the storage
-        head."""
-        return self._next_record if self._next_record is not None \
-            else self.current_record_override if self.current_record_override is not None \
-            else self.head
-
-    @property
-    def head(self):
-        """Return the real storage head.
-
-        This is the real storage head, the currently recorded state.
-        This raise NoRecord if there is no record in the storage."""
-        try:
-            return Record(self, self[super(Storage, self).head()])
-        except KeyError:
-            raise NoRecord
+        self._commiter.start()
 
     def is_writable(self):
         """Check that the storage is writable."""
@@ -301,18 +279,21 @@ class Storage(Repo):
     @property
     def root(self):
         """Return the root directory."""
-        try:
-            return self.current_record.root
-        except NoRecord:
-            return self.next_record.root
+        return self.head().root
 
-    @property
-    def next_record(self):
+    def head(self):
+        """Return current head. Default is to return a copy of the current
+        head so it can be modified, or a new commit if no commit exist."""
+
+        if self.current_record_override is not None:
+            return self.current_record_override
+
         if self._next_record is None:
             # Try to copy the current head
             try:
-                self._next_record = self.head
-                self._next_record.object.parents = [ self.head.object.id ]
+                head = self[super(Storage, self).head()]
+                self._next_record = Record(self, head)
+                self._next_record.object.parents = [ head.id ]
             except NoRecord:
                 # Create a record based on brand new commit!
                 self._next_record = Record(self, Commit())
