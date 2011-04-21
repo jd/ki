@@ -279,7 +279,7 @@ class Storage(Repo):
         the next record which is being prepared, or the overriding record if
         we have been asked to go somewhere else in time, or the storage
         head."""
-        return self.next_record if self.next_record is not None \
+        return self._next_record if self._next_record is not None \
             else self.current_record_override if self.current_record_override is not None \
             else self.head
 
@@ -319,12 +319,10 @@ class Storage(Repo):
 
         return self._next_record
 
-    @next_record.setter
-    def next_record(self, value):
-        self._next_record = None
-
     def commit(self):
-        """Commit modification to the storage."""
-        self.next_record.store()
-        self.next_record = None
-        # XXX update head
+        """Commit modification to the storage, if needed."""
+        if self._next_record is not None:
+            self._next_record.store()
+            self.refs['refs/heads/master'] = self._next_record.id
+            print "commited"
+            self._next_record = None
