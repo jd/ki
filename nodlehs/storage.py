@@ -86,10 +86,10 @@ class Directory(Storable):
         super(Directory, self).store()
 
     def __iter__(self):
-        for name, entry in self.local_tree.iteritems():
-            yield (entry[0], name)
-        for entry in self.object.iteritems():
-            yield (entry.mode, entry.path)
+        entries = set(self.local_tree.keys())
+        entries.update([ entry.path for entry in self.object.iteritems() ])
+        for entry in entries:
+            yield entry
 
     def _child_from_name(self, name):
         """Get a child of the directory by its name."""

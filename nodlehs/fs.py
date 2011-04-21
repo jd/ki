@@ -106,7 +106,7 @@ class Nodlehs(fuse.Operations):
         yield '.'
         yield '..'
         for entry in self._resolve(path, fh, Directory)[1]:
-            yield entry[1]
+            yield entry
 
     def release(self, path, fh):
         del self.fds[fh]
