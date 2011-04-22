@@ -164,8 +164,8 @@ class Nodlehs(fuse.Operations):
         new = Path(new)
 
         try:
-            (old_directory_mode, old_directory) = self.storage.next_record.root.child(old[:-1])
-            (new_directory_mode, new_directory) = self.storage.next_record.root.child(new[:-1])
+            (old_directory_mode, old_directory) = self.storage.root.child(old[:-1])
+            (new_directory_mode, new_directory) = self.storage.root.child(new[:-1])
             (item_mode, item) = old_directory.child(old[-1])
             old_directory.remove(old[-1])
         except NotDirectory:
@@ -181,7 +181,7 @@ class Nodlehs(fuse.Operations):
         path = Path(path)
 
         try:
-            (directory_mode, directory) = self.storage.next_record.root.child(path[:-1])
+            (directory_mode, directory) = self.storage.root.child(path[:-1])
             (item_mode, item) = directory.child(path[-1])
             directory.remove(path[-1])
         except NotDirectory:
@@ -197,9 +197,9 @@ class Nodlehs(fuse.Operations):
         source = Path(source)
 
         try:
-            (source_mode, source) = self.storage.next_record.root.child(source)
+            (source_mode, source) = self.storage.root.child(source)
             (target_directory_mode, target_directory) = \
-                self.storage.next_record.root.child(target[:-1])
+                self.storage.root.child(target[:-1])
         except NotDirectory:
             raise fuse.FuseOSError(errno.ENOTDIR)
         except NoChild:
