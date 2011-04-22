@@ -45,15 +45,15 @@ class TestUtils(unittest.TestCase):
         self.assert_(Path("a/b") + Path ("/c/d") == Path("a/b/c/d"))
 
     def _RepeatTimer_ran(self):
-        self._rt_ran = True
+        self._rt_ran += 1
 
     def test_RepeatTimer(self):
         self._rt_ran = False
         timer = RepeatTimer(0.1, self._RepeatTimer_ran)
         timer.start()
-        time.sleep(0.2)
+        time.sleep(0.5)
         timer.cancel()
-        self.assert_(self._rt_ran)
+        self.assert_(self._rt_ran > 3)
 
 if __name__ == '__main__':
     unittest.main()
