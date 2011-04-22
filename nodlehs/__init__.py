@@ -22,3 +22,9 @@ __author__ = "Julien Danjou <julien@danjou.info>"
 
 from .storage import *
 from .fs import *
+from .fuse import FUSE
+
+def start(root, mountpoint):
+    storage = Storage(root)
+    FUSE(Nodlehs(storage), mountpoint, debug=True)
+    storage.commit()

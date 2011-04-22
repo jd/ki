@@ -18,13 +18,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from nodlehs.fuse import FUSE
-from nodlehs.fs import Nodlehs
-
+import nodlehs
 import sys
 
 if len(sys.argv) != 3:
     print "usage: %s <repository> <mountpoint>" % sys.argv[0]
     sys.exit(1)
 
-fuse = FUSE(Nodlehs(sys.argv[1]), sys.argv[2], debug=True)
+nodlehs.start(sys.argv[1], sys.argv[2])

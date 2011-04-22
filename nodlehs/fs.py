@@ -42,9 +42,9 @@ def rw(func, self, *args, **kw):
 class Nodlehs(fuse.Operations):
     """The Nodlehs file system."""
 
-    def __init__(self, root):
+    def __init__(self, storage):
         self.start_time = time.time()
-        self.storage = Storage(root)
+        self.storage = storage
         self.fds = {}
         super(Nodlehs, self).__init__()
 
