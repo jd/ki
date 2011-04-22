@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
+import time
 from nodlehs.utils import *
 
 class TestUtils(unittest.TestCase):
@@ -42,6 +43,17 @@ class TestUtils(unittest.TestCase):
 
     def test_Path_add(self):
         self.assert_(Path("a/b") + Path ("/c/d") == Path("a/b/c/d"))
+
+    def _RepeatTimer_ran(self):
+        self._rt_ran = True
+
+    def test_RepeatTimer(self):
+        self._rt_ran = False
+        timer = RepeatTimer(0.1, self._RepeatTimer_ran)
+        timer.start()
+        time.sleep(0.2)
+        timer.cancel()
+        self.assert_(self._rt_ran)
 
 if __name__ == '__main__':
     unittest.main()

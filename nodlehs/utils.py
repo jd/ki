@@ -19,6 +19,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import threading
 
 class Path(object):
     """Magical path object.
@@ -72,3 +73,12 @@ class Path(object):
 
     def __repr__(self):
         return "<" + self.__class__.__name__ + " " + hex(id(self)) + " for " + self.path + ">"
+
+
+class RepeatTimer(threading._Timer):
+
+    def run(self):
+        while not self.finished.is_set():
+            self.finished.wait(self.interval)
+            if not self.finished.is_set():
+                self.function(*self.args, **self.kwargs)
