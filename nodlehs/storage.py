@@ -278,6 +278,7 @@ class Storage(Repo):
         # XXX Timer should be configurable.
         self._commiter = RepeatTimer(10.0, self.commit)
         super(Storage, self).__init__(root)
+        self._commiter.daemon = True
         self._commiter.start()
 
     def is_writable(self):
