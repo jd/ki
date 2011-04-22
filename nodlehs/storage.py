@@ -19,6 +19,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .utils import *
+from .remote import *
 from dulwich.repo import Repo
 from dulwich.objects import Blob, Commit, Tree, parse_timezone, S_IFGITLINK
 from StringIO import StringIO
@@ -275,9 +276,11 @@ class Storage(Repo):
         self.current_record_override = None
         # The next record
         self._next_record = None
+        # XXX This should be an ordered set
+        self.remotes = []
+        super(Storage, self).__init__(root)
         # XXX Timer should be configurable.
         self._commiter = RepeatTimer(10.0, self.commit)
-        super(Storage, self).__init__(root)
         self._commiter.daemon = True
         self._commiter.start()
 
@@ -315,3 +318,28 @@ class Storage(Repo):
             self._next_record.store()
             self.refs['refs/heads/master'] = self._next_record.id
             self._next_record = None
+
+    def add_remote(self, remote):
+        self.remotes.append(remote)
+
+    def del_remote(self, remote):
+        self.remotes.remove(remote)
+
+    def __getitem__(self, key):
+        try:
+            return super(Storage, self).__getitem__(key)
+        except KeyError:
+            # SHA1 not found, try to fetch it
+            return super(Storage, self).__getitem__(self._fetch_sha1(key))
+
+    def _fetch_sha1(self, sha1):
+        for remote in self.remotes:
+            # Try to fetch and return the sha1 if ok
+            try:
+                remote.fetch_sha1s([ sha1 ])
+                return sha1
+            # If fetch failed, continue to next remote
+            except FetchError:
+                pass
+        # We were unable to fetch
+        raise FetchError
