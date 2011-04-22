@@ -200,7 +200,7 @@ class File(Storable):
         # Update object data
         self.object.set_raw_string(self._data.getvalue())
         # Store
-        super(Record, self).store()
+        super(File, self).store()
 
 
 class Symlink(File):
