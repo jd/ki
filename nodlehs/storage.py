@@ -201,6 +201,10 @@ class File(Storable):
         self.object.set_raw_string(self._data.getvalue())
         # Store
         super(File, self).store()
+        # Generate a tag with the sha1 that points to the sha1
+        # That way, our blob object is not unreachable and cannot be garbage
+        # collected
+        self.storage.refs['refs/tags/%s' % self.id ] = self.id
 
 
 class Symlink(File):
