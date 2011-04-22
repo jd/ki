@@ -26,6 +26,7 @@ import stat
 import time
 import posix
 from decorator import decorator
+from dulwich.objects import S_ISGITLINK, S_IFGITLINK
 
 from .storage import *
 from .utils import Path
@@ -59,9 +60,13 @@ class Nodlehs(fuse.Operations):
     def getattr(self, path, fh=None):
         (mode, child) = self._resolve(path, fh)
         s = {}
-        # Directories have no mode, so set one by default
-        # XXX This mode should be a config option?
-        if stat.S_ISDIR(mode):
+        if S_ISGITLINK(mode):
+            # Transform gitlink to files
+            mode &= ~S_IFGITLINK
+            mode |= stat.S_IFREG
+        elif stat.S_ISDIR(mode):
+            # Directories have no mode, so set one by default
+            # XXX This mode should be a config option?
             mode |= (stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP)
         elif stat.S_ISLNK(mode):
             mode |= (stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
