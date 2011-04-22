@@ -18,7 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .utils import Path
+from .utils import *
 from dulwich.repo import Repo
 from dulwich.objects import Blob, Commit, Tree, parse_timezone, S_IFGITLINK
 from StringIO import StringIO
@@ -276,7 +276,7 @@ class Storage(Repo):
         # The next record
         self._next_record = None
         # XXX Timer should be configurable.
-        self._commiter = threading.Timer(10.0, self.commit)
+        self._commiter = RepeatTimer(10.0, self.commit)
         super(Storage, self).__init__(root)
         self._commiter.start()
 
