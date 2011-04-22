@@ -298,7 +298,7 @@ class Storage(Repo):
                 head = self[super(Storage, self).head()]
                 self._next_record = Record(self, head)
                 self._next_record.object.parents = [ head.id ]
-            except NoRecord:
+            except KeyError:
                 # Create a record based on brand new commit!
                 self._next_record = Record(self, Commit())
 
