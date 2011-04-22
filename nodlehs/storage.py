@@ -56,13 +56,10 @@ class Storable(object):
         self.storage = storage
         self.object = obj
 
-    @property
-    def id(self):
-        return self.object.id
-
     def store(self):
         """Store object into its storage."""
         self.storage.object_store.add_object(self.object)
+        return self.object.id
 
     def __len__(self):
         return self.object.raw_length()
@@ -82,13 +79,12 @@ class Directory(Storable):
     def store(self):
         for name, info in self.local_tree.iteritems():
             (mode, child) = info
-            child.store()
             # We store file with the GITLINK property. This is an hack to be
             # sure git will send us the whole blob when we fetch the tree.
             if isinstance(child, File):
                 mode |= S_IFGITLINK
-            self.object.add(name, int(mode), child.id)
-        super(Directory, self).store()
+            self.object.add(name, int(mode), child.store())
+        return super(Directory, self).store()
 
     def __iter__(self):
         entries = set(self.local_tree.keys())
@@ -201,11 +197,12 @@ class File(Storable):
         # Update object data
         self.object.set_raw_string(self._data.getvalue())
         # Store
-        super(File, self).store()
+        oid = super(File, self).store()
         # Generate a tag with the sha1 that points to the sha1
         # That way, our blob object is not unreachable and cannot be garbage
         # collected
-        self.storage.refs['refs/tags/%s' % self.id ] = self.id
+        self.storage.refs['refs/tags/%s' % oid ] = oid
+        return oid
 
 
 class Symlink(File):
@@ -261,12 +258,10 @@ class Record(Storable):
         self.object.author_time = \
             self.object.commit_time = \
             int(time.time())
-        # Store root
-        self.root.store()
-        # Store the ref to the root tree
-        self.object.tree = self.root.id
+        # Store root tree and the ref to the root tree
+        self.object.tree = self.root.store()
         # Store us
-        super(Record, self).store()
+        return super(Record, self).store()
 
 
 class Storage(Repo):
@@ -315,8 +310,7 @@ class Storage(Repo):
     def commit(self):
         """Commit modification to the storage, if needed."""
         if self._next_record is not None:
-            self._next_record.store()
-            self.refs['refs/heads/master'] = self._next_record.id
+            self.refs['refs/heads/master'] = self._next_record.store()
             self._next_record = None
 
     def add_remote(self, remote):
