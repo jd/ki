@@ -81,12 +81,12 @@ class Directory(Storable):
     def store(self):
         for name, info in self.local_tree.iteritems():
             (mode, child) = info
+            child.store()
             # We store file with the GITLINK property. This is an hack to be
             # sure git will send us the whole blob when we fetch the tree.
             if isinstance(child, File):
                 mode |= S_IFGITLINK
             self.object.add(name, int(mode), child.id)
-            child.store()
         super(Directory, self).store()
 
     def __iter__(self):
