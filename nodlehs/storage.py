@@ -275,7 +275,7 @@ class Storage(Repo):
         self.remotes = []
         super(Storage, self).__init__(root)
         # XXX Timer should be configurable.
-        self._commiter = RepeatTimer(10.0, self.commit)
+        self._commiter = RepeatTimer(10.0, self.commit_and_push)
         self._commiter.daemon = True
         self._commiter.start()
 
@@ -313,11 +313,18 @@ class Storage(Repo):
             self.refs['refs/heads/master'] = self._next_record.store()
             self._next_record = None
 
-    def add_remote(self, remote):
-        self.remotes.append(remote)
+    def push(self):
+        """Push master and all tags to remotes."""
+        refs = dict([ ("refs/tags/%s" % tag, ref)
+                      for tag, ref in self.refs.as_dict("refs/tags").iteritems() ])
+        refs["refs/heads/master"] = self.refs['refs/heads/master']
+        # XXX Make that threaded?
+        for remote in self.remotes:
+            remote.push(refs)
 
-    def del_remote(self, remote):
-        self.remotes.remove(remote)
+    def commit_and_push(self):
+        self.commit()
+        self.push()
 
     def __getitem__(self, key):
         try:

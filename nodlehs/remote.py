@@ -40,5 +40,7 @@ class Remote(object):
         except IOError:
             raise FetchError
 
-    # def push(self, sha1s):
-    #     self.client.send_pack(self.path, determine_wants, lambda have, want: sha1s):
+    def push(self, refs):
+        self.client.send_pack(self.path,
+                              lambda oldrefs: refs,
+                              self.storage.object_store.generate_pack_contents)
