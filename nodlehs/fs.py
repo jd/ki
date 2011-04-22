@@ -19,7 +19,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import fuse
-fuse.fuse_python_api = (0, 2)
 import errno
 import os
 import stat
