@@ -38,7 +38,7 @@ class Remote(object):
         try:
             self.client.fetch(self.path, self.storage, lambda refs: sha1s, progress)
         except IOError:
-            raise FetchError
+            raise FetchError(sha1s)
 
     def push(self, refs):
         self.client.send_pack(self.path,
