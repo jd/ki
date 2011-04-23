@@ -160,21 +160,12 @@ class Nodlehs(fuse.Operations):
 
     @rw
     def rename(self, old, new):
-        old = Path(old)
-        new = Path(new)
-
         try:
-            (old_directory_mode, old_directory) = self.storage.root.child(old[:-1])
-            (new_directory_mode, new_directory) = self.storage.root.child(new[:-1])
-            (item_mode, item) = old_directory.child(old[-1])
-            old_directory.remove(old[-1])
+            self.storage.root.rename(old, new)
         except NotDirectory:
             raise fuse.FuseOSError(errno.ENOTDIR)
         except NoChild:
             raise fuse.FuseOSError(errno.ENOENT)
-
-        new_directory.add(new[-1], item_mode, item)
-
 
     @rw
     def chmod(self, path, mode):

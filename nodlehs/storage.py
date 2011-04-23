@@ -164,6 +164,16 @@ class Directory(Storable):
 
         self.mtime = time.time()
 
+    def rename(self, old, new):
+        old = Path(old)
+        new = Path(new)
+
+        (old_directory_mode, old_directory) = self.child(old[:-1])
+        (new_directory_mode, new_directory) = self.child(new[:-1])
+        (item_mode, item) = old_directory.child(old[-1])
+        old_directory.remove(old[-1])
+        new_directory.add(new[-1], item_mode, item)
+
 
 class File(Storable):
     """A file."""
