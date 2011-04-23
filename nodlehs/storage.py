@@ -298,6 +298,14 @@ class Storage(Repo):
         """Return the root directory."""
         return self.head().root
 
+    @property
+    def master(self):
+        return self.refs["refs/heads/master"]
+
+    @master.setter
+    def master(self, value):
+        self.refs['refs/heads/master'] = value
+
     def head(self):
         """Return current head. Default is to return a copy of the current
         head so it can be modified, or a new commit if no commit exist."""
