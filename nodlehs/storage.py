@@ -131,12 +131,11 @@ class Directory(Storable):
 
     def child(self, path):
         """Get the child of that directory that is at path."""
+        path = Path(path)
+
         # If len(path) is 0, we are asked for ourselves.
         # This happens if the absolute path asked is /
         # Yeah, that means we are the r00t directory, indeed.
-
-        path = Path(path)
-
         if len(path) == 0:
             return (stat.S_IFDIR, self)
 
