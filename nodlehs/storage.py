@@ -62,6 +62,11 @@ class Storable(object):
         self.storage.object_store.add_object(self.object)
         return self.object.id
 
+    def id(self):
+        """Return the object SHA1 id.
+        Note that this id can changed anytime, since data change all the time."""
+        return self.object.id
+
     def __len__(self):
         return self.object.raw_length()
 
@@ -77,9 +82,17 @@ class Directory(Storable):
         self.local_tree = {}
         super(Directory, self).__init__(storage, obj)
 
+    def id(self):
+        for name, (mode, child) in self.local_tree.iteritems():
+            # We store file with the GITLINK property. This is an hack to be
+            # sure git will send us the whole blob when we fetch the tree.
+            if isinstance(child, File):
+                mode |= S_IFGITLINK
+            self.object.add(name, int(mode), child.id())
+        return super(Directory, self).id()
+
     def store(self):
-        for name, info in self.local_tree.iteritems():
-            (mode, child) = info
+        for name, (mode, child) in self.local_tree.iteritems():
             # We store file with the GITLINK property. This is an hack to be
             # sure git will send us the whole blob when we fetch the tree.
             if isinstance(child, File):
@@ -204,6 +217,11 @@ class File(Storable):
         self._data.truncate(size)
         self.mtime = time.time()
 
+    def id(self):
+        # Update object data
+        self.object.set_raw_string(self._data.getvalue())
+        return super(File, self).id()
+
     def store(self):
         # Update object data
         self.object.set_raw_string(self._data.getvalue())
@@ -237,33 +255,33 @@ class Record(Storable):
     """A commit record."""
 
     def __init__(self, storage, commit):
+        """Create a new Record. If commit is None, we create a Record based
+        on a new empty Commit, i.e. a new commit with a new empty Tree."""
+        if commit is None:
+            self.root = Directory(storage, Tree())
+        else:
+            self.root = Directory(storage, storage[commit.tree])
         super(Record, self).__init__(storage, commit)
-        self._root = None
+
+    def id(self):
+        # This is not implemented, mainly because even changing the
+        # object.*_time change the id, so it's rather useless or something
+        # we can't really use to identify the commit. In general, you want
+        # to identify the root, this is available via myrecord.root.id
+        # anyhow.
+        raise NotImplementedError
+
+
+    def store(self):
+        """Store a record."""
+        self.object.parents = self.parents
+        # XXX Add hostname based mail address?
         self.object.author = pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0]
         self.object.committer = "Nodlehs"
         self.object.message = "Nodlehs auto-commit"
         self.object.author_timezone = \
             self.object.commit_timezone = \
             - time.timezone
-
-    @property
-    def root(self):
-        """The root directory associated with the record."""
-        if self._root is None:
-            try:
-                # Initialize with the commit tree
-                self._root = Directory(self.storage, self.storage[self.object.tree])
-            except AttributeError:
-                # Initialize with a new tree
-                self._root = Directory(self.storage, Tree())
-        return self._root
-
-    @root.setter
-    def root(self, value):
-        self._root = value
-
-    def store(self):
-        # Update time
         # XXX maybe checking for root tree items mtime would be better and
         # more accurate?
         self.object.author_time = \
