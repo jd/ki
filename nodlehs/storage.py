@@ -365,6 +365,24 @@ class Storage(Repo):
 
         return self._next_record
 
+    def commit_history_list(self, sha):
+        """Return a list of commit history list for commit sha.
+        Commits tree are parsed in order, then in depth."""
+        commit = self[sha]
+        commits = OrderedSet(commit.parents)
+        for parent in commit.parents:
+            commits.update(self.commit_history_list(parent))
+        return commits
+
+    def find_common_ancestor(self, commit1, commit2):
+        """Find the first common ancestor between commit1 and commit2."""
+        rev1 = self.commit_history_list(commit1)
+        rev2 = self.commit_history_list(commit2)
+        for rev in rev1:
+            if rev in rev2:
+                return rev
+        return None
+
     def commit(self):
         """Commit modification to the storage, if needed."""
         if self._next_record is not None:
