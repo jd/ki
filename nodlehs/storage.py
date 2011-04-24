@@ -361,7 +361,7 @@ class Storage(Repo):
                 self._next_record.object.parents = [ head.id ]
             except KeyError:
                 # Create a record based on brand new commit!
-                self._next_record = Record(self, Commit())
+                self._next_record = Record(self, None)
 
         return self._next_record
 
