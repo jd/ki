@@ -323,9 +323,6 @@ class OrderedSet(OrderedDict, collections.MutableSet):
     def __str__(self):
         return '{%s}' % (', '.join(map(repr, self.keys())))
 
-    def __getitem__(self, key):
-        return self.keys().__getitem__(key)
-
     difference = property(lambda self: self.__sub__)
     difference_update = property(lambda self: self.__isub__)
     intersection = property(lambda self: self.__and__)

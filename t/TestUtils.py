@@ -60,7 +60,6 @@ class TestUtils(unittest.TestCase):
         self.assert_(1 in s)
         self.assert_(3 in s)
         s.add("hi")
-        self.assert_(s[4] is "hi")
         s.update(OrderedSet([1, 3, 8]))
         self.assert_(s[5] is 8)
         self.assert_(s.keys() == [ 1, 3, 4, 5, 'hi', 8 ])
