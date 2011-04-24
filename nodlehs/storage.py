@@ -22,6 +22,7 @@ from .utils import *
 from .remote import *
 from dulwich.repo import Repo
 from dulwich.objects import Blob, Commit, Tree, parse_timezone, S_IFGITLINK
+import dulwich.diff_tree as diff_tree
 from StringIO import StringIO
 import stat
 import time
@@ -186,6 +187,24 @@ class Directory(Storable):
         old_directory.remove(old[-1])
         new_directory.add(new[-1], item_mode, item)
 
+    def merge_tree_changes(self, changes):
+        """Merge a tree into this directory."""
+        for change in changes:
+            if change.type == diff_tree.CHANGE_DELETE:
+                self.remove(change.old.path)
+            elif change.type == diff_tree.CHANGE_MODIFY:
+                pass
+            elif change.type == diff_tree.CHANGE_UNCHANGED:
+                pass
+            elif change.type == diff_tree.CHANGE_ADD or \
+                    change.type == diff_tree.CHANGE_COPY:
+                parent_mode, parent_directory = self.child(Path(change.new.path[:-1]))
+                parent_directory.add(path[-1], change.new.mode, make_object(self.storage, change.new.sha))
+            elif change.type == diff_tree.CHANGE_RENAME:
+                self.rename(change.new.path, change.old.path)
+            else:
+                raise UnknownChangeType(change)
+
 
 class File(Storable):
     """A file."""
@@ -247,6 +266,10 @@ class Symlink(File):
     def target(self, value):
         self._data.truncate(0)
         self._data.write(value)
+
+
+class UnknownChangeType(Exception):
+    pass
 
 
 class Record(Storable):
