@@ -73,6 +73,15 @@ class Storable(object):
     def __repr__(self):
         return "<" + self.__class__.__name__ + " " + hex(id(self)) + " for " + self.object.id + ">"
 
+def make_object(storage, sha):
+    """Make a storage object from an sha."""
+    item = storage[sha]
+    if isinstance(item, Blob):
+        return File(storage, item)
+    if isinstance(item, Tree):
+        return Directory(storage, item)
+    raise UnknownObjectType(child)
+
 class Directory(Storable):
     """A directory."""
 
@@ -114,21 +123,11 @@ class Directory(Storable):
         except KeyError:
             try:
                 (mode, child_sha) = self.object[name]
-                child = self.storage[child_sha]
             except KeyError:
                 raise NoChild(name)
-        if isinstance(child, Blob):
-            ret = (mode, File(self.storage, child))
-        elif isinstance(child, Tree):
-            ret = (mode, Directory(self.storage, child))
+            self.local_tree[name] = (mode, make_object(self.storage, child_sha))
 
-        # Store returned file in local_tree: if it is ever modified, we will
-        # be able to store its new content (new blob id) automagically.
-        if ret:
-            self.local_tree[name] = ret
-            return ret
-
-        raise UnknownObjectType(child)
+        return self.local_tree[name]
 
     def child(self, path):
         """Get the child of that directory that is at path."""
