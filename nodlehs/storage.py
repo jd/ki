@@ -57,7 +57,8 @@ class Storable(object):
         self.object = obj
 
     def store(self):
-        """Store object into its storage."""
+        """Store object into its storage.
+        Return the object SHA1."""
         self.storage.object_store.add_object(self.object)
         return self.object.id
 
