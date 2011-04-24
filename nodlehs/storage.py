@@ -356,9 +356,9 @@ class Storage(Repo):
         if self._next_record is None:
             # Try to copy the current head
             try:
-                head = self[super(Storage, self).head()]
-                self._next_record = Record(self, head)
-                self._next_record.object.parents = [ head.id ]
+                self._next_record = Record(self, self[self.master])
+                # Store parent now, for comparison in commit()
+                self._next_record.parents = [ self.master ]
             except KeyError:
                 # Create a record based on brand new commit!
                 self._next_record = Record(self, None)
@@ -386,7 +386,46 @@ class Storage(Repo):
     def commit(self):
         """Commit modification to the storage, if needed."""
         if self._next_record is not None:
-            self.refs['refs/heads/master'] = self._next_record.store()
+            # XXX We may need to lock _next_record
+            # and have a global object lock in Repo
+            # Check if next record is a merge or if its root changed
+            # compared to its parent
+            if len(self._next_record.parents) > 1 \
+                    or self._next_record.root.id() != self[self._next_record.parents[0]].tree:
+                # We have a different root tree, so we are different.
+                if [ self.master ] == self._next_record.parents:
+                    # Current master is still our parent, so no problem updating master.
+                    self.master = self._next_record.store()
+                else:
+                    # Hum, current master is not our parent. It changed.
+                    # We need to create a merge commit:
+                    # with left commit being current next record
+                    # and right commit being current master
+                    left_commit = self._next_record.store()
+                    right_commit = self.master
+                    common_ancestor = self.find_common_ancestor(left_commit, right_commit)
+                    # Change the next record to be the merge tree
+                    changes = diff_tree.RenameDetector(self.object_store,
+                                                       # We look for the common ancestor with the right commits.
+                                                       # The right commit of the _next_record is [1], if it has one.
+                                                       self[common_ancestor].tree,
+                                                       self[right_commit].tree).changes_with_renames()
+                    self._next_record.root.merge_tree_changes(changes)
+                    self._next_record.parents = [ left_commit, right_commit ]
+                    # We have now merged master in our commit, so we are a new commit.
+                    # So we set parents to be current master we just merged and our previous
+                    if not self.refs.set_if_equals("refs/heads/master",
+                                                   right_commit,
+                                                   self._next_record.store()):
+                        # Master changed while we were doing our merge, so
+                        # retry to commit once again, merging this new
+                        # master.
+                        return self.commit()
+            # If _next_record did not change (no root tree change), we just
+            # reset in case master would have changed under our feet while
+            # we were away.
+            # If _next_record changed, we still reset it to make a new one
+            # as soon as someone will need.
             self._next_record = None
 
     def push(self):
