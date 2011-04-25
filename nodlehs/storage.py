@@ -405,10 +405,14 @@ class Storage(Repo):
         list.
         """
         rev1 = self.commit_history_list(commit1)
-        rev2 = self.commit_history_list(commit2)
-        for rev in rev1:
-            if rev in rev2:
-                return rev
+
+        commits = OrderedSet([ set(self[commit2].parents) ])
+
+        for commit_set in commits:
+            if commit_set in rev1:
+                return commit_set
+            for commit in commit_set:
+                commits.add(set(self[commit].parents))
 
     def commit(self):
         """Commit modification to the storage, if needed."""
