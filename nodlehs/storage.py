@@ -151,6 +151,11 @@ class Directory(Storable):
 
         raise NotDirectory(child)
 
+    def __delitem__(self, path):
+        path = Path(path)
+        subdir = self[path[:-1]]
+        del subdir[1].local_tree[path[-1]]
+
     def __getitem__(self, path):
         return self.child(path)
 
