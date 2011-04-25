@@ -22,6 +22,15 @@ class TestStorage(unittest.TestCase):
         self.assert_(isinstance(directory["a"][1]["b"][1], Directory))
         self.assert_(isinstance(directory["a"][1]["b"][1]["c"][1], Directory))
 
+    def test_Directory_add(self):
+        directory = Directory(self.storage, Tree())
+        f = File(self.storage, Blob())
+        directory["m/k/x"] = (0, f)
+        self.assert_(isinstance(directory["m"][1], Directory))
+        self.assert_(isinstance(directory["m"][1]["k"][1], Directory))
+        self.assert_(isinstance(directory["m"][1]["k"][1]["x"][1], File))
+        self.assert_(directory["m"][1]["k"][1]["x"][1] is f)
+
     def tearDown(self):
         shutil.rmtree(self.repo_path)
 
