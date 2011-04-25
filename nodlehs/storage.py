@@ -366,12 +366,15 @@ class Storage(Repo):
         return self._next_record
 
     def commit_history_list(self, sha):
-        """Return a list of commit history list for commit sha.
-        Commits tree are parsed in order, then in depth."""
-        commit = self[sha]
-        commits = OrderedSet([ set(commit.parents) ])
-        for parent in commit.parents:
-            commits.update(self.commit_history_list(parent))
+        """Return a list of commit history list for commit sha using
+        breadth-first-search."""
+
+        commits = OrderedSet([ set(self[sha].parents) ])
+
+        for commit_set in commits:
+            for commit in commit_set:
+                commits.add(set(self[commit].parents))
+
         return commits
 
     def find_common_ancestors(self, commit1, commit2):
