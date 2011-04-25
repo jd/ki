@@ -369,19 +369,43 @@ class Storage(Repo):
         """Return a list of commit history list for commit sha.
         Commits tree are parsed in order, then in depth."""
         commit = self[sha]
-        commits = OrderedSet(commit.parents)
+        commits = OrderedSet([ set(commit.parents) ])
         for parent in commit.parents:
             commits.update(self.commit_history_list(parent))
         return commits
 
-    def find_common_ancestor(self, commit1, commit2):
-        """Find the first common ancestor between commit1 and commit2."""
+    def find_common_ancestors(self, commit1, commit2):
+        """Find the first common ancestors between commit1 and commit2.
+
+        This returns a set of common ancestors. This set will only have one
+        item in it if the commits have one parent in common, but it can also
+        returns a set with multiple commits in case commit1 and commit2 both
+        have a merge commits as common ancestors:
+
+        commit1--------parentA\---
+                               \- \------
+                                 \       \---commitX---+
+                                  \-                   |
+                                    \-                 |
+                                      \-               |
+                                        \              |
+                                          \-           |
+                                            \commitY   |
+                                                |      |
+        commit2-------parentB-------------------+      |
+                            \--------------------------+
+
+        In such a case it would return set([ commitX, commitY ]).
+
+        Also, it does not care about the order of the commits id in the
+        parent field of a commit, and considers them as a set rather than a
+        list.
+        """
         rev1 = self.commit_history_list(commit1)
         rev2 = self.commit_history_list(commit2)
         for rev in rev1:
             if rev in rev2:
                 return rev
-        return None
 
     def commit(self):
         """Commit modification to the storage, if needed."""
@@ -389,9 +413,8 @@ class Storage(Repo):
             # XXX We may need to lock _next_record
             # and have a global object lock in Repo
             # Check if next record is a merge or if its root changed
-            # compared to its parent
-            if len(self._next_record.parents) > 1 \
-                    or self._next_record.root.id() != self[self._next_record.parents[0]].tree:
+            # compared to current master
+            if self._next_record.root.id() != self[self.master].tree:
                 # We have a different root tree, so we are different.
                 if [ self.master ] == self._next_record.parents:
                     # Current master is still our parent, so no problem updating master.
@@ -403,13 +426,15 @@ class Storage(Repo):
                     # and right commit being current master
                     left_commit = self._next_record.store()
                     right_commit = self.master
-                    common_ancestor = self.find_common_ancestor(left_commit, right_commit)
+                    # Find common ancestors.
+                    common_ancestors = self.find_common_ancestors(left_commit, right_commit)
                     # Change the next record to be the merge tree
-                    changes = diff_tree.RenameDetector(self.object_store,
-                                                       # We look for the common ancestor with the right commits.
-                                                       # The right commit of the _next_record is [1], if it has one.
-                                                       self[common_ancestor].tree,
-                                                       self[right_commit].tree).changes_with_renames()
+                    for ancestor in common_ancestors:
+                        changes = diff_tree.RenameDetector(self.object_store,
+                                                           # We look for the common ancestor with the right commits.
+                                                           # The right commit of the _next_record is [1], if it has one.
+                                                           self[ancestor].tree,
+                                                           self[right_commit].tree).changes_with_renames()
                     self._next_record.root.merge_tree_changes(changes)
                     self._next_record.parents = [ left_commit, right_commit ]
                     # We have now merged master in our commit, so we are a new commit.
