@@ -392,11 +392,11 @@ class Storage(Repo):
 
         return self._next_record
 
-    def commit_history_list(self, sha):
-        """Return a list of commit history list for commit sha using
+    def commit_history_list(self, commit):
+        """Return a list of commit history list for commit using
         breadth-first-search."""
 
-        commits = OrderedSet([ set(self[sha].parents) ])
+        commits = OrderedSet([ set(commit.parents) ])
 
         for commit_set in commits:
             for commit in commit_set:
@@ -433,7 +433,7 @@ class Storage(Repo):
         """
         rev1 = self.commit_history_list(commit1)
 
-        commits = OrderedSet([ set(self[commit2].parents) ])
+        commits = OrderedSet([ set(commit2.parents) ])
 
         for commit_set in commits:
             if commit_set in rev1:
