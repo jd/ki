@@ -496,6 +496,7 @@ class Storage(Repo):
                       for tag, ref in self.refs.as_dict("refs/tags").iteritems() ])
         refs["refs/heads/master"] = self.refs['refs/heads/master']
         # XXX Make that threaded?
+        # XXX This can raise UpdateRefsError, we should probably fetch in such a case.
         for remote in self.remotes:
             remote.push(refs)
 
