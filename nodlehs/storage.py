@@ -150,10 +150,37 @@ class Directory(Storable):
 
         raise NotDirectory(child)
 
-    def add(self, name, mode, f):
+    def __getitem__(self, path):
+        return self.child(path)
+
+    def __setitem__(self, path, value):
+        # Value should be a tuple (mode, object)
+        return self.add(path, value[0], value[1])
+
+    def mkdir(self, path, directory=None):
+        """Create a directory name with dir_object being the Directory object.
+        If the directory at path already exists, do nothing.
+        Returns the directory."""
+
+        path = Path(path)
+        subdir = self
+        while path:
+            curdir = path.pop(0)
+            try:
+                (mode, subdir) = subdir.child(curdir)
+            except NoChild:
+                subdir[curdir] = (stat.S_IFDIR, Directory(self.storage, Tree()))
+                subdir = subdir[curdir][1]
+
+        return subdir
+
+    def add(self, path, mode, f):
         """Add a file with name and mode attributes to directory."""
-        self.local_tree[name] = (mode, f)
-        self.mtime = time.time()
+
+        path = Path(path)
+        subdir = self.mkdir(path[:-1])
+        subdir.local_tree[path[-1]] = (mode, f)
+        subdir.mtime = time.time()
 
     def remove(self, name):
         """Remove a file with name from directory."""
