@@ -50,6 +50,11 @@ class Path(object):
     def path(self, value):
         self.components = value.split(os.sep)
 
+    def pop(self, value=None):
+        if value is not None:
+            return self.components.pop(value)
+        return self.components.pop()
+
     def __iter__(self):
         """Return an interator on components."""
         return self.components.__iter__()

@@ -29,6 +29,17 @@ class TestUtils(unittest.TestCase):
                 self.assert_(c == "bar")
             i += 1
 
+    def test_Path_pop(self):
+        p = Path("a/b/c")
+        self.assert_(p.pop() == "c")
+        self.assert_(p.pop() == "b")
+        self.assert_(p.pop() == "a")
+        try:
+            p.pop()
+            self.assert_(False)
+        except IndexError:
+            self.assert_(True)
+
     def test_Path_item(self):
         p = Path("foo/bar")
         self.assert_(p[0] == "foo")
