@@ -152,9 +152,7 @@ class Directory(Storable):
         raise NotDirectory(child)
 
     def __delitem__(self, path):
-        path = Path(path)
-        subdir = self[path[:-1]]
-        del subdir[1].local_tree[path[-1]]
+        return self.remove(path)
 
     def __getitem__(self, path):
         return self.child(path)
@@ -188,27 +186,30 @@ class Directory(Storable):
         subdir.local_tree[path[-1]] = (mode, f)
         subdir.mtime = time.time()
 
-    def remove(self, name):
+    def remove(self, path):
         """Remove a file with name from directory."""
+        path = Path(path)
+        subdir = self[path[:-1]][1]
+        name = path[-1]
         try:
             # Try to delete in the local tree
-            del self.local_tree[name]
+            del subdir.local_tree[name]
         except KeyError:
             # The file was not in local_tree, try in self.object and raises
             # if it raises.
             try:
-                del self.object[name]
+                del subdir.object[name]
             except KeyError:
                 raise NoChild(name)
         else:
             # We succeeded to delete in local_tree, just try to delete in
             # self.object to be sure we deleted definitively.
             try:
-                del self.object[name]
+                del subdir.object[name]
             except KeyError:
                 pass
 
-        self.mtime = time.time()
+        subdir.mtime = time.time()
 
     def rename(self, old, new):
         old = Path(old)
