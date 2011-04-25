@@ -15,6 +15,11 @@ class TestStorage(unittest.TestCase):
         os.mkdir(self.repo_path)
         self.storage = Storage.init_bare(self.repo_path)
 
+    def test_Storage_root(self):
+        self.assert_(self.storage.root is not None)
+        self.assert_(self.storage.root is self.storage.head().root)
+        self.assert_(self.storage.root is self.storage._next_record.root)
+
     def test_Directory_mkdir(self):
         directory = Directory(self.storage, Tree())
         directory.mkdir("a/b/c")
