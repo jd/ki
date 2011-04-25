@@ -8,8 +8,8 @@ class TestMerge(unittest.TestCase):
     def test_merge_conflict(self):
         try:
             merge("hello world", "hello there", "hello you")
-        except MergeConflictError:
-            self.assert_(True)
+        except MergeConflictError as e:
+            self.assert_(e.number_of_conflicts == 1)
         else:
             self.assert_(False)
 

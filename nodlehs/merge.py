@@ -22,8 +22,18 @@ import subprocess
 import tempfile
 import os
 
+
 class MergeConflictError(Exception):
-    pass
+
+    def __init__(self, number_of_conflicts, content):
+        self.number_of_conflicts = number_of_conflicts
+        self.content = content
+        if number_of_conflicts > 1:
+            s = "s"
+        else:
+            s = ""
+        super(MergeConflictError, self).__init__("%d conflict%s" % (number_of_conflicts, s))
+
 
 def merge(current, base, other):
     """Use git-merge-file to merge content."""
@@ -56,7 +66,8 @@ def merge(current, base, other):
             pass
 
     if git_merge_file.returncode != 0:
-        raise MergeConflictError("%d conflict(s)" % git_merge_file.returncode)
+        raise MergeConflictError(git_merge_file.returncode,
+                                 git_merge_file.communicate()[0])
 
     return git_merge_file.communicate()[0]
 
