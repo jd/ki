@@ -319,7 +319,6 @@ class Record(Storable):
         # anyhow.
         raise NotImplementedError
 
-
     def store(self):
         """Store a record."""
         self.object.parents = self.parents
@@ -489,6 +488,10 @@ class Storage(Repo):
 
     def push(self):
         """Push master and all tags to remotes."""
+        # XXX Do not push every objects, respect what the remote wants.
+        #     This could be done by fetching refs/tags/config on the remote, which
+        #     would be a blob with the configuration file or the configuration object
+        #     we could pickle. :)
         refs = dict([ ("refs/tags/%s" % tag, ref)
                       for tag, ref in self.refs.as_dict("refs/tags").iteritems() ])
         refs["refs/heads/master"] = self.refs['refs/heads/master']
