@@ -32,11 +32,6 @@ import os
 import threading
 
 
-class NoRecord(Exception):
-    """This storage has no record."""
-    pass
-
-
 class UnknownObjectType(Exception):
     """This object is unknown."""
     pass
