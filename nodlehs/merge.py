@@ -49,6 +49,7 @@ def merge(current, base, other):
             f.write(other)
         git_merge_file = subprocess.Popen([ "git", "merge-file", "--stdout",
                                             file_current, file_base, file_other ],
+                                          stderr=subprocess.PIPE,
                                           stdout=subprocess.PIPE)
         git_merge_file.wait()
     finally:
