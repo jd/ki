@@ -99,7 +99,13 @@ class Nodlehs(fuse.Operations):
 
     def to_fd(self, mode, item):
         """Return a fd for item."""
-        fd = len(self.fds)
+        # Collect all fd number
+        k = self.fds.keys()
+        k.sort()
+        try:
+            fd = k[-1] + 1
+        except IndexError:
+            fd = 0
         self.fds[fd] = (mode, item)
         return fd
 
