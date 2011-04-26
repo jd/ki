@@ -113,9 +113,9 @@ class Directory(Storable):
             if isinstance(child, File):
                 mode |= S_IFGITLINK
             if update_type == Storable.store:
-                i = child.id()
-            else:
                 i = child.store()
+            else:
+                i = child.id()
             self.object.add(name, int(mode), i)
 
     def __iter__(self):
