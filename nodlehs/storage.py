@@ -263,10 +263,17 @@ class Directory(Storable):
                             child.merge(self.storage[change.old.sha].data,
                                         self.storage[change.new.sha].data)
                         except MergeConflictError as conflict:
-                            # XXX Not sure what to do yet
-                            print conflict
-                            print conflict.content
-                            raise NotImplementedError
+                            # Store both files
+                            self["%s.%s" % (change.old.path, change.old.sha)] = (change.old.mode,
+                                                                                 make_object(self.storage,
+                                                                                             change.old.sha))
+                            self["%s.%s" % (change.new.path, change.new.sha)] = (change.new.mode,
+                                                                                 make_object(self.storage,
+                                                                                             change.new.sha))
+                            # Store merged content here
+                            f = File(self.storage, Blob())
+                            f.write(conflict.content)
+                            self[change.new.path] = (change.new.mode, f)
             elif change.type == diff_tree.CHANGE_UNCHANGED:
                 pass
             elif change.type == diff_tree.CHANGE_ADD \
