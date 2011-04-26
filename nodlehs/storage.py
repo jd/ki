@@ -20,6 +20,7 @@
 
 from .utils import *
 from .remote import *
+from .merge import *
 from dulwich.repo import Repo
 from dulwich.client import UpdateRefsError
 from dulwich.objects import Blob, Commit, Tree, parse_timezone, S_IFGITLINK
@@ -53,15 +54,26 @@ class Storable(object):
         self.storage = storage
         self.object = obj
 
+    def _update(self, update_type):
+        """Update the internal object."""
+        raise NotImplementedError
+
+    def update(self):
+        """Update the internal object."""
+        self._update(Storable.update)
+        return self.object
+
     def store(self):
         """Store object into its storage.
         Return the object SHA1."""
+        self._update(Storable.store)
         self.storage.object_store.add_object(self.object)
         return self.object.id
 
     def id(self):
         """Return the object SHA1 id.
         Note that this id can changed anytime, since data change all the time."""
+        self._update(Storable.id)
         return self.object.id
 
     def __len__(self):
@@ -69,6 +81,7 @@ class Storable(object):
 
     def __repr__(self):
         return "<" + self.__class__.__name__ + " " + hex(id(self)) + " for " + self.object.id + ">"
+
 
 def make_object(storage, sha):
     """Make a storage object from an sha."""
@@ -93,23 +106,17 @@ class Directory(Storable):
         self.local_tree = {}
         super(Directory, self).__init__(storage, obj)
 
-    def id(self):
+    def _update(self, update_type):
         for name, (mode, child) in self.local_tree.iteritems():
             # We store file with the GITLINK property. This is an hack to be
             # sure git will send us the whole blob when we fetch the tree.
             if isinstance(child, File):
                 mode |= S_IFGITLINK
-            self.object.add(name, int(mode), child.id())
-        return super(Directory, self).id()
-
-    def store(self):
-        for name, (mode, child) in self.local_tree.iteritems():
-            # We store file with the GITLINK property. This is an hack to be
-            # sure git will send us the whole blob when we fetch the tree.
-            if isinstance(child, File):
-                mode |= S_IFGITLINK
-            self.object.add(name, int(mode), child.store())
-        return super(Directory, self).store()
+            if update_type == Storable.store:
+                i = child.id()
+            else:
+                i = child.store()
+            self.object.add(name, int(mode), i)
 
     def __iter__(self):
         entries = set(self.local_tree.keys())
@@ -335,14 +342,10 @@ class File(Storable):
         self._data.truncate(size)
         self.mtime = time.time()
 
-    def id(self):
-        # Update object data
+    def _update(self, update_type):
         self.object.set_raw_string(self._data.getvalue())
-        return super(File, self).id()
 
     def store(self):
-        # Update object data
-        self.object.set_raw_string(self._data.getvalue())
         # Store
         oid = super(File, self).store()
         # Generate a tag with the sha1 that points to the sha1
@@ -387,38 +390,34 @@ class Record(Storable):
         self.parents = []
         super(Record, self).__init__(storage, commit)
 
-    def id(self):
-        # This is not implemented, mainly because even changing the
-        # object.*_time change the id, so it's rather useless or something
-        # we can't really use to identify the commit. In general, you want
-        # to identify the root, this is available via myrecord.root.id
-        # anyhow.
-        raise NotImplementedError
-
-    def store(self):
-        """Store a record."""
+    def _update(self, update_type):
         self.object.parents = self.parents
-        # XXX Add hostname based mail address?
-        self.object.author = pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0]
-        self.object.committer = "Nodlehs"
-        self.object.message = "Nodlehs auto-commit"
-        self.object.author_timezone = \
-            self.object.commit_timezone = \
-            - time.timezone
-        # XXX maybe checking for root tree items mtime would be better and
-        # more accurate?
-        self.object.author_time = \
-            self.object.commit_time = \
-            int(time.time())
-        # Store root tree and the ref to the root tree
-        self.object.tree = self.root.store()
-        # Store us
-        return super(Record, self).store()
+
+        # Only update this fields when storing
+        if update_type == Storable.store:
+            # XXX Add hostname based mail address?
+            self.object.author = pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0]
+            self.object.committer = "Nodlehs"
+            self.object.message = "Nodlehs auto-commit"
+            self.object.author_timezone = \
+                self.object.commit_timezone = \
+                - time.timezone
+            # XXX maybe checking for root tree items mtime would be better and
+            # more accurate?
+            self.object.author_time = \
+                self.object.commit_time = \
+                int(time.time())
+            # Store root tree and the ref to the root tree
+            self.object.tree = self.root.store()
+        else:
+            self.object.tree = self.root.id()
 
     def merge_commit(self, other):
         """Merge another commit into ourselves."""
         if other not in self.parents:
-            common_ancestors = self.storage.find_common_ancestors(self.object, self.storage[other])
+            # Update self before sending it to the LCA function
+            common_ancestors = self.storage.find_common_ancestors(self.update(),
+                                                                  self.storage[other])
             if len(common_ancestors) == 1:
                 common_ancestor = common_ancestors.pop()
             else:
