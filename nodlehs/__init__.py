@@ -27,4 +27,7 @@ from .fuse import FUSE
 def start(root, mountpoint):
     storage = Storage(root)
     FUSE(Nodlehs(storage), mountpoint, debug=True)
+    # XXX Do not do that! It's probably not thread safe! We should split out
+    #     the storage._commiter into another class and make it commit on
+    #     cancel().
     storage.commit()
