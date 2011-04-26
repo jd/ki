@@ -90,7 +90,7 @@ class RepeatTimer(threading._Timer):
 
 class OrderedSet(list):
 
-    def __init__(self, iterable):
+    def __init__(self, iterable=[]):
         for item in iterable:
             self.append(item)
 

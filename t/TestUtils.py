@@ -67,6 +67,7 @@ class TestUtils(unittest.TestCase):
         self.assert_(self._rt_ran > 3)
 
     def test_OrderedSet(self):
+        s = OrderedSet()
         s = OrderedSet([1, 3, 4, 5])
         self.assert_(1 in s)
         self.assert_(3 in s)

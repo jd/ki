@@ -460,8 +460,7 @@ class Storage(Repo):
         self.current_record_override = None
         # The next record
         self._next_record = None
-        # XXX This should be an ordered set
-        self.remotes = []
+        self.remotes = OrderedSet()
         super(Storage, self).__init__(root)
         # XXX Timer should be configurable.
         self._commiter = RepeatTimer(10.0, self.commit_and_push)
