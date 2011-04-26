@@ -84,6 +84,11 @@ def make_object(storage, sha):
         return Directory(storage, item)
     raise UnknownObjectType(child)
 
+
+class UnknownChangeType(Exception):
+    pass
+
+
 class Directory(Storable):
     """A directory."""
 
@@ -224,18 +229,85 @@ class Directory(Storable):
     def merge_tree_changes(self, changes):
         """Merge a tree into this directory."""
         for change in changes:
+            print change
             if change.type == diff_tree.CHANGE_DELETE:
-                self.remove(change.old.path)
+                try:
+                    mode, child = self[change.old.path]
+                except NoChild, NotDirectory:
+                    # Already deleted, good.
+                    pass
+                else:
+                    # Only handle delete request if the delete operation would
+                    # be done on the same file version.
+                    if change.old.sha == child.id:
+                        try:
+                            del self[change.old.path]
+                        except NoChild, NotDirectory:
+                            # Maybe we did delete it on our side too, so, nothing bad, ignore!
+                            pass
             elif change.type == diff_tree.CHANGE_MODIFY:
-                pass
+                try:
+                    mode, child = self[change.old.path]
+                except NoChild, NotDirectory:
+                    self[change.new.path] = (change.new.mode, make_object(self.storage, change.new.sha))
+                else:
+                    # Only handle change operation if nothing had been changed
+                    # in the mean time in our tree.
+                    if change.old.sha == child.id:
+                        self[change.new.path] = (change.new.mode, make_object(self.storage, change.new.sha))
+                    else:
+                        # Both have changed, try to merge
+                        try:
+                            child.merge(self.storage[change.old.sha].data,
+                                        self.storage[change.new.sha].data)
+                        except MergeConflictError as conflict:
+                            # XXX Not sure what to do yet
+                            print conflict
+                            print conflict.content
+                            raise NotImplementedError
             elif change.type == diff_tree.CHANGE_UNCHANGED:
                 pass
-            elif change.type == diff_tree.CHANGE_ADD or \
-                    change.type == diff_tree.CHANGE_COPY:
-                parent_mode, parent_directory = self.child(Path(change.new.path[:-1]))
-                parent_directory.add(path[-1], change.new.mode, make_object(self.storage, change.new.sha))
+            elif change.type == diff_tree.CHANGE_ADD \
+                    or change.type == diff_tree.CHANGE_COPY:
+                try:
+                    mode, child = self[change.new.path]
+                except NoChild:
+                    # We do not have the move target, so let's add the file.
+                    self[change.new.path] = (change.new.mode, make_object(self.storage, change.new.sha))
+                except NotDirectory:
+                    # XXX We cannot add this file here, so we need to add it somewhere else. Figure it out.
+                    raise NotImplementedError
+                else:
+                    if change.new.sha != child.id:
+                        # Conflict! The file already exists but is different.
+                        # Yeah, this is ugly, but for now…
+                        self["%s.%d" % (change.new.path, change.new.sha)] = (change.new.mode,
+                                                                             make_object(self.storage, change.new.sha))
             elif change.type == diff_tree.CHANGE_RENAME:
-                self.rename(change.new.path, change.old.path)
+                try:
+                    mode, child = self[change.new.path]
+                except NoChild, NotDirectory:
+                    # We do not have the move target, so let's add the file.
+                    try:
+                        self[change.new.path] = (change.new.mode, make_object(self.storage, change.new.sha))
+                    except NotDirectory:
+                        # XXX Cannot add the file here, figure out what to do
+                        raise NotImplementedError
+                else:
+                    if change.new.sha != child.id:
+                        # Conflict! The file already exists but is different.
+                        # Yeah, this is ugly, but for now…
+                        self["%s.%d" % (change.new.path, change.new.sha)] = (change.new.mode,
+                                                                             make_object(self.storage, change.new.sha))
+                try:
+                    mode, child = self[change.old.path]
+                except NoChild, NotDirectory:
+                    # We do not have the old file that was renamed, nothing to do.
+                    pass
+                else:
+                    if change.old.sha == child.id:
+                        # This is the same file that got renamed, so we can at least remove it.
+                        del self[change.old.path]
             else:
                 raise UnknownChangeType(change)
 
@@ -284,6 +356,11 @@ class File(Storable):
         self.storage.refs['refs/tags/%s' % oid ] = oid
         return oid
 
+    def merge(self, base, other):
+        """Do a 3-way merge of other using base."""
+        content = merge(self._data.getvalue(), base, other)
+        self.truncate(0)
+        self.write(content)
 
 class Symlink(File):
     """A symlink."""
@@ -302,10 +379,6 @@ class Symlink(File):
         self._data.write(value)
 
 
-class UnknownChangeType(Exception):
-    pass
-
-
 class Record(Storable):
     """A commit record."""
 
@@ -316,6 +389,7 @@ class Record(Storable):
             self.root = Directory(storage, Tree())
         else:
             self.root = Directory(storage, storage[commit.tree])
+        self.parents = []
         super(Record, self).__init__(storage, commit)
 
     def id(self):
@@ -345,6 +419,33 @@ class Record(Storable):
         self.object.tree = self.root.store()
         # Store us
         return super(Record, self).store()
+
+    def merge_commit(self, other):
+        """Merge another commit into ourselves."""
+        if other not in self.parents:
+            common_ancestors = self.storage.find_common_ancestors(self.object, self.storage[other])
+            if len(common_ancestors) == 1:
+                common_ancestor = common_ancestors.pop()
+            else:
+                # Criss-cross merge :( We merge the ancestors, and use that as a
+                # base. This should be equivalent to what Git does in its
+                # recursive merge method, if this code is correct, which shall
+                # be proved.
+                common_ancestor_r = Record(self.storage, self.storage[common_ancestors.pop()])
+                for ancestor in common_ancestors:
+                    common_ancestor_r.merge_commit(ancestor)
+                common_ancestor = common_ancestor_r.store()
+
+            print "    Looking for changes between:"
+            print common_ancestor
+            print other
+            changes = diff_tree.RenameDetector(self.storage.object_store,
+                                               self.storage[common_ancestor].tree,
+                                               self.storage[other].tree).changes_with_renames()
+            print "    Changes:"
+            print changes
+            self.root.merge_tree_changes(changes)
+            self.parents.append(other)
 
 
 class Storage(Repo):
@@ -416,7 +517,7 @@ class Storage(Repo):
         This returns a set of common ancestors. This set will only have one
         item in it if the commits have one parent in common, but it can also
         returns a set with multiple commits in case commit1 and commit2 both
-        have a merge commits as common ancestors:
+        have a merge commits as common ancestors (criss-cross merge).
 
         commit1--------parentA\---
                                \- \------
@@ -437,54 +538,68 @@ class Storage(Repo):
         parent field of a commit, and considers them as a set rather than a
         list.
         """
-        rev1 = self.commit_history_list(commit1)
+        print "Finding common ancestors for %s and %s" % (commit1, commit2)
+        commits1 = self.commit_history_list(commit1)
 
-        commits = OrderedSet([ set(commit2.parents) ])
+        print "Commit1 revision list:"
+        print commits1
 
-        for commit_set in commits:
-            if commit_set in rev1:
-                return commit_set
-            for commit in commit_set:
-                commits.add(set(self[commit].parents))
+        commits2 = OrderedSet([ set(commit2.parents) ])
+
+        for commit2_set in commits2:
+            print "Testing commit2_set:"
+            print commit2_set
+            for commit1_set in commits1:
+                if commit2_set.issubset(commit1_set):
+                    print "Found commit2_set in",
+                    print commit1_set
+                    print "Returning commit2_set :",
+                    print commit2_set
+                    return commit2_set
+            for commit in commit2_set:
+                commits2.add(set(self[commit].parents))
 
     def commit(self):
         """Commit modification to the storage, if needed."""
         if self._next_record is not None:
             # XXX We may need to lock _next_record
             # and have a global object lock in Repo
-            # Check if next record is a merge or if its root changed
-            # compared to current master
-            if self._next_record.root.id() != self[self.master].tree:
-                # We have a different root tree, so we are different.
-                if [ self.master ] == self._next_record.parents:
-                    # Current master is still our parent, so no problem updating master.
+            new_root_id = self._next_record.root.id()
+            # Check that there's changes in the next record by comparing its
+            # root tree id against its parent's root tree id, or by checking
+            # if it's a merge record. But anyhow, its new root must be
+            # different than master's current, otherwise we would have
+            # nothing to do and could drop that next record.
+            # if (is_merge_commit or next_record_has_modification) \
+            #     and next_record_is_different_than_master
+            print "New root tree id: ",
+            print new_root_id
+            if (len(self._next_record.parents) > 1 \
+                    or new_root_id != self[self._next_record.parents[0]].tree) \
+                    and new_root_id != self[self.master].tree:
+                # We have a different root tree, so we are different. Hehe.
+                print " Next record root tree is different"
+                if self.master in self._next_record.parents:
+                    # Current master is still one of our parents, so no
+                    # problem updating master. This is a fast-forward.
+                    print "  Doing a fast-forward"
                     self.master = self._next_record.store()
                 else:
-                    # Hum, current master is not our parent. It changed.
-                    # We need to create a merge commit:
-                    # with left commit being current next record
-                    # and right commit being current master
-                    left_commit = self._next_record.store()
-                    right_commit = self.master
-                    # Find common ancestors.
-                    common_ancestors = self.find_common_ancestors(left_commit, right_commit)
-                    # Change the next record to be the merge tree
-                    for ancestor in common_ancestors:
-                        changes = diff_tree.RenameDetector(self.object_store,
-                                                           # We look for the common ancestor with the right commits.
-                                                           # The right commit of the _next_record is [1], if it has one.
-                                                           self[ancestor].tree,
-                                                           self[right_commit].tree).changes_with_renames()
-                    self._next_record.root.merge_tree_changes(changes)
-                    self._next_record.parents = [ left_commit, right_commit ]
-                    # We have now merged master in our commit, so we are a new commit.
-                    # So we set parents to be current master we just merged and our previous
+                    # Hum, current master is not our parent. It changed. We
+                    # need to merge master in the next record to create a
+                    # merge commit.
+                    print "  Merging master into next record"
+                    # Store master in a variable to be sure not to retrieve
+                    # it from the repo twice!
+                    master = self.master
+                    self._next_record.merge_commit(master)
                     if not self.refs.set_if_equals("refs/heads/master",
-                                                   right_commit,
+                                                   master,
                                                    self._next_record.store()):
                         # Master changed while we were doing our merge, so
                         # retry to commit once again, merging this new
                         # master.
+                        print "  Master changed, holy shit, recommit!"
                         return self.commit()
             # If _next_record did not change (no root tree change), we just
             # reset in case master would have changed under our feet while
