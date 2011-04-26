@@ -421,6 +421,8 @@ class Record(Storable):
 
     def merge_commit(self, other):
         """Merge another commit into ourselves."""
+        # XXX Maybe add some other barrier to be sure we are not merging one
+        # of our parents, which would be utterly stupid.
         if other not in self.parents:
             # Update self before sending it to the LCA function
             common_ancestors = self.storage.find_common_ancestors(self.update(),
