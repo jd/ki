@@ -23,7 +23,13 @@ import tempfile
 import os
 
 
-class MergeConflictError(Exception):
+class MergeError(Exception):
+    """Error raised when a merge error occurs."""
+    pass
+
+
+class MergeConflictError(MergeError):
+    """Error raised when a conflicts occurs during a merge."""
 
     def __init__(self, number_of_conflicts, content):
         self.number_of_conflicts = number_of_conflicts
@@ -33,6 +39,11 @@ class MergeConflictError(Exception):
         else:
             s = ""
         super(MergeConflictError, self).__init__("%d conflict%s" % (number_of_conflicts, s))
+
+
+class MergeBinaryError(MergeError):
+    """Error raised when a merge is tried on binary content."""
+    pass
 
 
 def merge(current, base, other):
@@ -66,7 +77,9 @@ def merge(current, base, other):
         except:
             pass
 
-    if git_merge_file.returncode != 0:
+    if git_merge_file.returncode == 255:
+        raise MergeBinaryError
+    elif git_merge_file.returncode > 0:
         raise MergeConflictError(git_merge_file.returncode,
                                  git_merge_file.communicate()[0])
 
