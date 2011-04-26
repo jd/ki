@@ -31,7 +31,7 @@ import time
 import pwd
 import os
 import threading
-
+import socket
 
 class UnknownObjectType(Exception):
     """This object is unknown."""
@@ -402,8 +402,10 @@ class Record(Storable):
 
         # Only update this fields when storing
         if update_type == Storable.store:
-            # XXX Add hostname based mail address?
-            self.object.author = pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0]
+            passwd = pwd.getpwuid(os.getuid())
+            self.object.author = "%s <%s@%s>" % (passwd.pw_gecos.split(",")[0],
+                                                 passwd.pw_name,
+                                                 socket.getfqdn())
             self.object.committer = "Nodlehs"
             self.object.message = "Nodlehs auto-commit"
             self.object.author_timezone = \
