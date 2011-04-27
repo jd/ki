@@ -79,7 +79,7 @@ class Storable(object):
         return self.object.raw_length()
 
     def __repr__(self):
-        return "<" + self.__class__.__name__ + " " + hex(id(self)) + " for " + self._object.id + ">"
+        return "<" + self.__class__.__name__ + " " + hex(id(self)) + " for " + self.object.id + ">"
 
 
 def make_object(storage, sha):
