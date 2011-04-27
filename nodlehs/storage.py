@@ -390,11 +390,11 @@ class Record(Storable):
             commit = Commit()
             need_update = True
             self.root = Directory(storage, Tree())
-            self.parents = OrderedSet()
         else:
             self.root = Directory(storage, storage[commit.tree])
-            self.parents = OrderedSet(self.object.parents)
+            need_update = False
         super(Record, self).__init__(storage, commit)
+        self.parents = OrderedSet(self._object.parents)
         if need_update:
             self._update(Record.__init__)
 
