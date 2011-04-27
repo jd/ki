@@ -52,35 +52,35 @@ class Storable(object):
 
     def __init__(self, storage, obj):
         self.storage = storage
-        self.object = obj
+        self._object = obj
+
+    @property
+    def object(self):
+        self._update(Storable.object)
+        return self._object
 
     def _update(self, update_type):
         """Update the internal object."""
         raise NotImplementedError
 
-    def update(self):
-        """Update the internal object."""
-        self._update(Storable.update)
-        return self.object
-
     def store(self):
         """Store object into its storage.
         Return the object SHA1."""
         self._update(Storable.store)
-        self.storage.object_store.add_object(self.object)
-        return self.object.id
+        self.storage.object_store.add_object(self._object)
+        return self._object.id
 
     def id(self):
         """Return the object SHA1 id.
         Note that this id can changed anytime, since data change all the time."""
         self._update(Storable.id)
-        return self.object.id
+        return self._object.id
 
     def __len__(self):
         return self.object.raw_length()
 
     def __repr__(self):
-        return "<" + self.__class__.__name__ + " " + hex(id(self)) + " for " + self.object.id + ">"
+        return "<" + self.__class__.__name__ + " " + hex(id(self)) + " for " + self._object.id + ">"
 
 
 def make_object(storage, sha):
@@ -116,13 +116,10 @@ class Directory(Storable):
                 i = child.store()
             else:
                 i = child.id()
-            self.object.add(name, int(mode), i)
+            self._object.add(name, int(mode), i)
 
     def __iter__(self):
-        entries = set(self.local_tree.keys())
-        entries.update([ entry.path for entry in self.object.iteritems() ])
-        for entry in entries:
-            yield entry
+        return self.object.__iter__()
 
     def _child_from_name(self, name):
         """Get a child of the directory by its name."""
@@ -350,7 +347,7 @@ class File(Storable):
         self.mtime = time.time()
 
     def _update(self, update_type):
-        self.object.set_raw_string(self._data.getvalue())
+        self._object.set_raw_string(self._data.getvalue())
 
     def store(self):
         # Store
@@ -387,39 +384,47 @@ class Symlink(File):
 class Record(Storable):
     """A commit record."""
 
-    def __init__(self, storage, commit):
+    def __init__(self, storage, commit=None):
         """Create a new Record. If commit is None, we create a Record based
         on a new empty Commit, i.e. a new commit with a new empty Tree."""
         if commit is None:
+            commit = Commit()
+            need_update = True
             self.root = Directory(storage, Tree())
         else:
             self.root = Directory(storage, storage[commit.tree])
-        self.parents = []
         super(Record, self).__init__(storage, commit)
+        if need_update:
+            self._update(Record.__init__)
+
+    @property
+    def parents(self):
+        return OrderedSet(self.object.parents)
+
+    @parents.setter
+    def parents(self, value):
+        self.object.parents = value
 
     def _update(self, update_type):
-        self.object.parents = self.parents
-
-        # Only update this fields when storing
+        """Update commit information."""
+        passwd = pwd.getpwuid(os.getuid())
+        self._object.author = "%s <%s@%s>" % (passwd.pw_gecos.split(",")[0],
+                                             passwd.pw_name,
+                                             socket.getfqdn())
+        self._object.committer = "Nodlehs"
+        self._object.message = "Nodlehs auto-commit"
+        self._object.author_timezone = \
+            self._object.commit_timezone = \
+            - time.timezone
+        # XXX maybe checking for root tree items mtime would be better and
+        # more accurate?
+        self._object.author_time = \
+            self._object.commit_time = \
+            int(time.time())
         if update_type == Storable.store:
-            passwd = pwd.getpwuid(os.getuid())
-            self.object.author = "%s <%s@%s>" % (passwd.pw_gecos.split(",")[0],
-                                                 passwd.pw_name,
-                                                 socket.getfqdn())
-            self.object.committer = "Nodlehs"
-            self.object.message = "Nodlehs auto-commit"
-            self.object.author_timezone = \
-                self.object.commit_timezone = \
-                - time.timezone
-            # XXX maybe checking for root tree items mtime would be better and
-            # more accurate?
-            self.object.author_time = \
-                self.object.commit_time = \
-                int(time.time())
-            # Store root tree and the ref to the root tree
-            self.object.tree = self.root.store()
+            self._object.tree = self.root.store()
         else:
-            self.object.tree = self.root.id()
+            self._object.tree = self.root.id()
 
     def merge_commit(self, other):
         """Merge another commit into ourselves."""
