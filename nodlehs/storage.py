@@ -510,7 +510,7 @@ class Storage(Repo):
 
         for commit_set in commits:
             for commit in commit_set:
-                commits.add(set(self[commit].parents))
+                commits.add(set(commit.parents))
 
         return commits
 
@@ -560,7 +560,7 @@ class Storage(Repo):
                     print commit2_set
                     return commit2_set
             for commit in commit2_set:
-                commits2.add(set(self[commit].parents))
+                commits2.add(set(commit.parents))
 
     def commit(self):
         """Commit modification to the storage, if needed."""
