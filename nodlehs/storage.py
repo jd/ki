@@ -390,19 +390,13 @@ class Record(Storable):
             commit = Commit()
             need_update = True
             self.root = Directory(storage, Tree())
+            self.parents = OrderedSet()
         else:
             self.root = Directory(storage, storage[commit.tree])
+            self.parents = OrderedSet(self.object.parents)
         super(Record, self).__init__(storage, commit)
         if need_update:
             self._update(Record.__init__)
-
-    @property
-    def parents(self):
-        return OrderedSet(self.object.parents)
-
-    @parents.setter
-    def parents(self, value):
-        self.object.parents = value
 
     def _update(self, update_type):
         """Update commit information."""
@@ -420,6 +414,7 @@ class Record(Storable):
         self._object.author_time = \
             self._object.commit_time = \
             int(time.time())
+        self._object.parents = self.parents
         if update_type == Storable.store:
             self._object.tree = self.root.store()
         else:
