@@ -6,7 +6,6 @@ import os
 import shutil
 from nodlehs.storage import *
 from dulwich.objects import *
-from dulwich.repo import MemoryRepo
 
 class TestStorage(unittest.TestCase):
 
