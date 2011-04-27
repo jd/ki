@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# nodlehs -- Distributed file system
+# nodlehs.commiter -- Commiter objects
 #
 #    Copyright © 2011  Julien Danjou <julien@danjou.info>
 #
@@ -18,11 +18,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__author__ = "Julien Danjou <julien@danjou.info>"
+from .utils import *
 
-from .storage import *
-from .fs import *
-from .fuse import FUSE
 
-def start(root, mountpoint):
-    FUSE(Nodlehss(Storage(root)), mountpoint, debug=True)
+class TimeCommiter(RepeatTimer):
+    """A commiter that commit every N seconds."""
+
+    def __init__(self, storage, time):
+        self.daemon = True
+        super(TimeCommiter, self).__init__(time, storage.commit_and_push)

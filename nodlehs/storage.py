@@ -461,10 +461,6 @@ class Storage(Repo):
         self._next_record = None
         self.remotes = OrderedSet()
         super(Storage, self).__init__(root)
-        # XXX Timer should be configurable.
-        self._commiter = RepeatTimer(10.0, self.commit_and_push)
-        self._commiter.daemon = True
-        self._commiter.start()
 
     def is_writable(self):
         """Check that the storage is writable."""
