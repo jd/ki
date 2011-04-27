@@ -66,11 +66,7 @@ class TestStorage(unittest.TestCase):
         directory["m/k/x"] = (0, f)
         del directory["m/k"]
         self.assert_(isinstance(directory["m"][1], Directory))
-        try:
-            directory["m"][1]["k"]
-            self.assert_(False)
-        except NoChild:
-            pass
+        self.assertRaises(NoChild, lambda: directory["m"][1]["k"])
 
     def tearDown(self):
         shutil.rmtree(self.repo_path)
