@@ -60,7 +60,7 @@ class Nodlehs(fuse.Operations):
         (mode, child) = self._resolve(path, fh)
         s = {}
         if S_ISGITLINK(mode):
-            # Transform gitlink to files
+            # Transform gitlinks to files
             mode &= ~S_IFGITLINK
             mode |= stat.S_IFREG
         elif stat.S_ISDIR(mode):
@@ -141,10 +141,12 @@ class Nodlehs(fuse.Operations):
 
     @rw
     def _create(self, path, mode, obj):
-        path = Path(path)
-        (directory_mode, directory) = self._get_child(path[:-1], Directory)
-        obj.mtime = time.time()
-        directory.add(path[-1], mode, obj)
+        try:
+            self.storage.root[path] = (mode, obj)
+        except NoChild:
+            raise fuse.FuseOSError(errno.ENOENT)
+        except NoDirectory:
+            raise fuse.FuseOSError(errno.ENOTDIR)
 
         return self.to_fd(mode, obj)
 
@@ -163,7 +165,8 @@ class Nodlehs(fuse.Operations):
     @rw
     def rename(self, old, new):
         try:
-            self.storage.root.rename(old, new)
+            self.storage.root[new] = self.storage.root[old]
+            del self.storage.root[old]
         except NotDirectory:
             raise fuse.FuseOSError(errno.ENOTDIR)
         except NoChild:
@@ -171,40 +174,23 @@ class Nodlehs(fuse.Operations):
 
     @rw
     def chmod(self, path, mode):
-        path = Path(path)
-
         try:
-            (directory_mode, directory) = self.storage.root.child(path[:-1])
-            (item_mode, item) = directory.child(path[-1])
-            directory.remove(path[-1])
+            self.storage.root[path] = (mode, self.storage.root[path][1])
         except NotDirectory:
             raise fuse.FuseOSError(errno.ENOTDIR)
         except NoChild:
             raise fuse.FuseOSError(errno.ENOENT)
-
-        directory.add(path[-1], mode, item)
 
     @rw
     def link(self, target, source):
-        target = Path(target)
-        source = Path(source)
-
-        try:
-            (source_mode, source) = self.storage.root.child(source)
-            (target_directory_mode, target_directory) = \
-                self.storage.root.child(target[:-1])
-        except NotDirectory:
-            raise fuse.FuseOSError(errno.ENOTDIR)
-        except NoChild:
-            raise fuse.FuseOSError(errno.ENOENT)
-
-        target_directory.add(target[-1], source_mode, source)
+        # We do not support link operations
+        raise fuse.FuseOSError(errno.EPERM)
 
     def _get_child(self, path, cls=None):
         """Get the mode and child of path.
         Also check that child is instance of cls."""
         try:
-            (mode, child) = self.storage.root.child(Path(path))
+            (mode, child) = self.storage.root[path]
         except NotDirectory:
             raise fuse.FuseOSError(errno.ENOTDIR)
         except NoChild:
