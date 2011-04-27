@@ -23,14 +23,13 @@ from .remote import *
 from .merge import *
 from dulwich.repo import Repo
 from dulwich.client import UpdateRefsError
-from dulwich.objects import Blob, Commit, Tree, parse_timezone, S_IFGITLINK
+from dulwich.objects import Blob, Commit, Tree, S_IFGITLINK
 import dulwich.diff_tree as diff_tree
 from StringIO import StringIO
 import stat
 import time
 import pwd
 import os
-import threading
 import socket
 
 class UnknownObjectType(Exception):
