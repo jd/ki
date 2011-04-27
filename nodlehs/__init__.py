@@ -25,4 +25,4 @@ from .fs import *
 from .fuse import FUSE
 
 def start(root, mountpoint):
-    FUSE(Nodlehss(Storage(root)), mountpoint, debug=True)
+    FUSE(Nodlehs(Storage(root)), mountpoint, debug=True)
