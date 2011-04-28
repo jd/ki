@@ -436,6 +436,43 @@ class Record(Storable):
 
         return commits
 
+    def find_common_ancestors(self, other):
+        """Find the first common ancestors with another Record.
+
+        This returns a set of common ancestors. This set will only have one
+        item in it if the commits have one parent in common, but it can also
+        returns a set with multiple commits in case commit1 and commit2 both
+        have a merge commits as common ancestors (criss-cross merge).
+
+        self-----------parentA\---
+                               \- \------
+                                 \       \---commitX---+
+                                  \-                   |
+                                    \-                 |
+                                      \-               |
+                                        \              |
+                                          \-           |
+                                            \commitY   |
+                                                |      |
+        other---------parentB-------------------+      |
+                            \--------------------------+
+
+        In such a case it would return set([ commitX, commitY ]).
+
+        Also, it does not care about the order of the commits id in the
+        parent field of a commit, and considers them as a set rather than a
+        list.
+        """
+        commits1 = self.commit_history_list()
+        commits2 = OrderedSet([ set(other.parents) ])
+
+        for commit2_set in commits2:
+            for commit1_set in commits1:
+                if commit2_set.issubset(commit1_set):
+                    return commit2_set
+            for commit in commit2_set:
+                commits2.add(set(commit.parents))
+
     def merge_commit(self, other):
         """Merge another commit into ourselves."""
         # XXX Maybe add some other barrier to be sure we are not merging one
@@ -523,54 +560,6 @@ class Storage(Repo, threading.Thread, dbus.service.Object):
                 self._next_record = Record(self, None)
 
         return self._next_record
-
-    def find_common_ancestors(self, commit1, commit2):
-        """Find the first common ancestors between commit1 and commit2.
-
-        This returns a set of common ancestors. This set will only have one
-        item in it if the commits have one parent in common, but it can also
-        returns a set with multiple commits in case commit1 and commit2 both
-        have a merge commits as common ancestors (criss-cross merge).
-
-        commit1--------parentA\---
-                               \- \------
-                                 \       \---commitX---+
-                                  \-                   |
-                                    \-                 |
-                                      \-               |
-                                        \              |
-                                          \-           |
-                                            \commitY   |
-                                                |      |
-        commit2-------parentB-------------------+      |
-                            \--------------------------+
-
-        In such a case it would return set([ commitX, commitY ]).
-
-        Also, it does not care about the order of the commits id in the
-        parent field of a commit, and considers them as a set rather than a
-        list.
-        """
-        print "Finding common ancestors for %s and %s" % (commit1, commit2)
-        commits1 = commit1.commit_history_list()
-
-        print "Commit1 revision list:"
-        print commits1
-
-        commits2 = OrderedSet([ set(commit2.parents) ])
-
-        for commit2_set in commits2:
-            print "Testing commit2_set:"
-            print commit2_set
-            for commit1_set in commits1:
-                if commit2_set.issubset(commit1_set):
-                    print "Found commit2_set in",
-                    print commit1_set
-                    print "Returning commit2_set :",
-                    print commit2_set
-                    return commit2_set
-            for commit in commit2_set:
-                commits2.add(set(commit.parents))
 
     def commit(self):
         """Commit modification to the storage, if needed."""
