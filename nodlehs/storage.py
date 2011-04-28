@@ -424,6 +424,18 @@ class Record(Storable):
         else:
             self._object.tree = self.root.id()
 
+    def commit_history_list(self):
+        """Return a list of commit history list for commit using
+        breadth-first-search."""
+
+        commits = OrderedSet([ set(self.parents) ])
+
+        for commit_set in commits:
+            for commit in commit_set:
+                commits.add(set(commit.parents))
+
+        return commits
+
     def merge_commit(self, other):
         """Merge another commit into ourselves."""
         # XXX Maybe add some other barrier to be sure we are not merging one
@@ -512,18 +524,6 @@ class Storage(Repo, threading.Thread, dbus.service.Object):
 
         return self._next_record
 
-    def commit_history_list(self, commit):
-        """Return a list of commit history list for commit using
-        breadth-first-search."""
-
-        commits = OrderedSet([ set(commit.parents) ])
-
-        for commit_set in commits:
-            for commit in commit_set:
-                commits.add(set(commit.parents))
-
-        return commits
-
     def find_common_ancestors(self, commit1, commit2):
         """Find the first common ancestors between commit1 and commit2.
 
@@ -552,7 +552,7 @@ class Storage(Repo, threading.Thread, dbus.service.Object):
         list.
         """
         print "Finding common ancestors for %s and %s" % (commit1, commit2)
-        commits1 = self.commit_history_list(commit1)
+        commits1 = commit1.commit_history_list()
 
         print "Commit1 revision list:"
         print commits1
