@@ -27,7 +27,7 @@ import posix
 from decorator import decorator
 from dulwich.objects import S_ISGITLINK, S_IFGITLINK
 
-from .storage import *
+from .objects import NotDirectory, NoChild, Directory, File, Symlink
 from .utils import Path
 
 @decorator
@@ -145,22 +145,22 @@ class NodlehsFuse(fuse.Operations):
             self.storage.root[path] = (mode, obj)
         except NoChild:
             raise fuse.FuseOSError(errno.ENOENT)
-        except NoDirectory:
+        except NotDirectory:
             raise fuse.FuseOSError(errno.ENOTDIR)
 
         return self.to_fd(mode, obj)
 
     def mkdir(self, path, mode):
-        self._create(path, stat.S_IFDIR | mode, Directory(self.storage, Tree()))
+        self._create(path, stat.S_IFDIR | mode, Directory(self.storage))
 
     def create(self, path, mode):
-        return self._create(path, mode, File(self.storage, Blob()))
+        return self._create(path, mode, File(self.storage))
 
     def mknod(self, path, mode, dev):
         if not stat.S_ISREG(mode):
             raise fuse.FuseOSError(errno.EINVAL)
 
-        return self._create(path, mode, File(self.storage, Blob()))
+        return self._create(path, mode, File(self.storage))
 
     @rw
     def rename(self, old, new):
@@ -224,7 +224,7 @@ class NodlehsFuse(fuse.Operations):
     def symlink(self, target, source):
         target = Path(target)
         (target_directory_mode, target_directory) = self._get_child(target[:-1])
-        target_directory.add(target[-1], stat.S_IFLNK, Symlink(self.storage, Blob(), source))
+        target_directory.add(target[-1], stat.S_IFLNK, Symlink(self.storage, target=source))
 
     def readlink(self, path):
         return str(self._get_child(path, Symlink)[1])
