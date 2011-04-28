@@ -18,9 +18,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from .fuse import FUSE
 from .utils import *
 from .remote import *
 from .merge import *
+from .constants import *
 from dulwich.repo import Repo
 from dulwich.client import UpdateRefsError
 from dulwich.objects import Blob, Commit, Tree, S_IFGITLINK
@@ -31,6 +33,8 @@ import time
 import pwd
 import os
 import socket
+import uuid
+import dbus.service
 
 class UnknownObjectType(Exception):
     """This object is unknown."""
@@ -452,15 +456,25 @@ class Record(Storable):
             self.parents.append(other)
 
 
-class Storage(Repo):
+class Storage(Repo, threading.Thread, dbus.service.Object):
     """Storage based on a repository."""
 
-    def __init__(self, root):
+    def __init__(self, root, mountpoint, bus):
         self.current_record_override = None
         # The next record
         self._next_record = None
         self.remotes = OrderedSet()
-        super(Storage, self).__init__(root)
+        self.mountpoint = mountpoint
+        threading.Thread.__init__(self, name="Thread Storage %s" % root)
+        Repo.__init__(self, root)
+        self.daemon = True
+
+        # Build a name
+        dbus.service.Object.__init__(self, bus,
+                                     "%s/%s_%s" % (BUS_PATH,
+                                                   filter(lambda x: 'a' <= x <= 'z' or 'A' <= x <= 'Z' or '0' <= x <= '9' or x == '_' ,
+                                                          os.path.splitext(os.path.basename(root))[0]),
+                                                   "".join(map(lambda x: x == '-' and '_' or x, str(uuid.uuid4())))))
 
     def is_writable(self):
         """Check that the storage is writable."""
@@ -646,3 +660,12 @@ class Storage(Repo):
                 pass
         # We were unable to fetch
         raise FetchError
+
+    def run(self):
+        from .fs import NodlehsFuse
+        FUSE(NodlehsFuse(self), self.mountpoint, debug=True)
+
+    @dbus.service.method(dbus_interface=BUS_INTERFACE)
+    def Mount(self):
+        if not self.is_alive():
+            self.start()

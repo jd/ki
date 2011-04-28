@@ -38,14 +38,14 @@ def rw(func, self, *args, **kw):
     return func(self, *args, **kw)
 
 
-class Nodlehs(fuse.Operations):
+class NodlehsFuse(fuse.Operations):
     """The Nodlehs file system."""
 
     def __init__(self, storage):
         self.start_time = time.time()
         self.storage = storage
         self.fds = {}
-        super(Nodlehs, self).__init__()
+        super(NodlehsFuse, self).__init__()
 
     def access(self, path, amode):
         (mode, child) = self._get_child(path)

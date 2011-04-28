@@ -20,9 +20,14 @@
 
 __author__ = "Julien Danjou <julien@danjou.info>"
 
-from .storage import *
-from .fs import *
-from .fuse import FUSE
+import storage
+import bus
+import dbus.glib
+import gobject
 
 def start(root, mountpoint):
-    FUSE(Nodlehs(Storage(root)), mountpoint, debug=True)
+    gobject.threads_init()
+    dbus.glib.init_threads()
+    bus.init()
+    gobject.MainLoop().run()
+
