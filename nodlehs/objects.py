@@ -478,8 +478,8 @@ class Record(Storable):
         # of our parents, which would be utterly stupid.
         if other not in self.parents:
             # Update self before sending it to the LCA function
-            common_ancestors = self.storage.find_common_ancestors(self.update(),
-                                                                  self.storage[other])
+            common_ancestors = self.find_common_ancestors(self.update(),
+                                                          self.storage[other])
             if len(common_ancestors) == 1:
                 common_ancestor = common_ancestors.pop()
             else:
