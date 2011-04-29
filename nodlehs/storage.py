@@ -21,6 +21,7 @@
 from .fuse import FUSE
 from .utils import *
 from .objects import Record
+from .remote import Remote
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
 import os
@@ -82,7 +83,7 @@ class Storage(Repo, dbus.service.Object):
 
     def __init__(self, bus, path):
         self.bus = bus
-        self.remotes = OrderedSet()
+        self.remotes = {}
         self._branches = {}
         Repo.__init__(self, path)
         # Build a name
@@ -152,6 +153,21 @@ class Storage(Repo, dbus.service.Object):
             self._branches[name] = Branch(self, name)
         return self._branches[name].__dbus_object_path__
 
+    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
+                         in_signature='si')
+    def AddRemote(self, url, weight):
+        if url not in [ r.url for r in self.remotes.values() ]:
+            while self.remotes.has_key(weight):
+                weight += 1
+            self.remotes[weight] = Remote(self, url)
+
+    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
+                         in_signature='s')
+    def RemoveRemote(self, url):
+        for k, r in self.remotes.iteritems():
+            if r.url == url:
+                del self.remotes[k]
+                break
 
 
 class Branch(dbus.service.Object, threading.Thread):
