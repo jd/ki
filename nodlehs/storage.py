@@ -24,6 +24,7 @@ from .objects import Record
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
 import os
+import xdg.BaseDirectory
 import uuid
 import threading
 import dbus.service
@@ -39,37 +40,56 @@ def get_storage_manager(bus):
         _storage_manager = StorageManager(bus)
     return _storage_manager
 
+class NotEmptyDirectory(Exception):
+    pass
 
 class StorageManager(dbus.service.Object):
 
     def __init__(self, busname):
         # XXX Singleton?
         self.storages = {}
+        self.user_storage = None
         self.busname = busname
         super(StorageManager, self).__init__(busname, "%s/%s" % (BUS_PATH,
                                                                  self.__class__.__name__))
 
+    def create_storage(self, path):
+        if len(os.listdir(path)) is 0:
+            return Storage.init_bare(self.busname, path)
+        return Storage(self.busname, path)
+
     @dbus.service.method(dbus_interface=BUS_INTERFACE,
                          in_signature='s', out_signature='o')
-    def CreateStorage(self, root):
+    def CreateStorage(self, path):
+        """Create a storage."""
         if not self.storages.has_key(repo):
-            self.storages[repo] = Storage(self.busname, root)
+            self.storages[repo] = self.create_storage(self.busname, path)
         return self.storages[repo].__dbus_object_path__
+
+    @dbus.service.method(dbus_interface=BUS_INTERFACE,
+                         out_signature='o')
+    def CreateUserStorage(self):
+        """Create the default user storage."""
+        if self.user_storage is None:
+            self.user_storage = self.create_storage(self.busname)
+        return self.user_storage.__dbus_object_path__
 
 
 class Storage(Repo, dbus.service.Object):
     """Storage based on a repository."""
 
-    def __init__(self, bus, root):
+    def __init__(self, bus, path=None):
         self.bus = bus
         self.remotes = OrderedSet()
         self._branches = {}
-        Repo.__init__(self, root)
+        if path is None:
+            path = xdg.BaseDirectory.save_data_path("nodlehs/storage")
+        Repo.__init__(self, path)
         # Build a name
         dbus.service.Object.__init__(self, bus,
                                      "%s/%s_%s" % (BUS_PATH,
                                                    filter(lambda x: 'a' <= x <= 'z' or 'A' <= x <= 'Z' or '0' <= x <= '9' or x == '_' ,
-                                                          os.path.splitext(os.path.basename(root))[0]),
+                                                          os.path.splitext(os.path.basename(path))[0]),
                                                    "".join(map(lambda x: x == '-' and '_' or x, str(uuid.uuid4())))))
 
     @classmethod
