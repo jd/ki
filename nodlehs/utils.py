@@ -108,3 +108,20 @@ class OrderedSet(list):
 
     def discard(self, item):
         return self.remove(item)
+
+
+class SingletonType(type):
+    """Singleton metaclass."""
+
+    def __call__(cls, *args, **kwargs):
+        try:
+            return cls.__instance
+        except:
+            cls.__instance = type.__call__(cls, *args, **kwargs)
+            return cls.__instance
+
+
+class Singleton(object):
+    """Singleton class."""
+
+    __metaclass__ = SingletonType

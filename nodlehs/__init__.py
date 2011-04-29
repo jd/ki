@@ -21,13 +21,8 @@
 __author__ = "Julien Danjou <julien@danjou.info>"
 
 import storage
+import objects
 import bus
-import dbus.glib
-import gobject
-
-def start(root, mountpoint):
-    gobject.threads_init()
-    dbus.glib.init_threads()
-    bus.init()
-    gobject.MainLoop().run()
+import remote
+import utils
 

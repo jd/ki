@@ -18,11 +18,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import nodlehs
-import sys
+import nodlehs.bus
+import dbus.glib
+import gobject
 
-if len(sys.argv) != 3:
-    print "usage: %s <repository> <mountpoint>" % sys.argv[0]
-    sys.exit(1)
-
-nodlehs.start(sys.argv[1], sys.argv[2])
+gobject.threads_init()
+dbus.glib.init_threads()
+nodlehs.bus.init()
+gobject.MainLoop().run()
