@@ -203,8 +203,10 @@ class Branch(dbus.service.Object, threading.Thread):
     @head.setter
     def head(self, value):
         self.storage.refs['refs/heads/%s' % self.branch_name] = value
+        self.Commited()
 
-    def commit(self):
+    @dbus.service.method(dbus_interface="%s.Branch" % BUS_INTERFACE)
+    def Commit(self):
         """Commit modification to the storage, if needed."""
         if self._next_record is not None:
             # XXX We may need to lock _next_record
@@ -223,8 +225,8 @@ class Branch(dbus.service.Object, threading.Thread):
             print new_root_id
             if len(self._next_record.parents) == 0 \
                     or ((len(self._next_record.parents) > 1 \
-                             or new_root_id != self[self._next_record.parents[0]].tree) \
-                            and new_root_id != self[self.head].tree):
+                             or new_root_id != self.storage[self._next_record.parents[0]].tree) \
+                            and new_root_id != self.storage[self.head].tree):
                 # We have a different root tree, so we are different. Hehe.
                 print " Next record root tree is different"
                 try:
@@ -251,7 +253,7 @@ class Branch(dbus.service.Object, threading.Thread):
                         # retry to commit once again, merging this new
                         # head.
                         print "  head changed, holy shit, recommit!"
-                        return self.commit()
+                        return self.Commit()
             # If _next_record did not change (no root tree change), we just
             # reset in case head would have changed under our feet while
             # we were away.
@@ -259,10 +261,14 @@ class Branch(dbus.service.Object, threading.Thread):
             # as soon as someone will need.
             self._next_record = None
 
+    @dbus.service.signal(dbus_interface="%s.Branch" % BUS_INTERFACE)
+    def Commited(self):
+        pass
+
     def run(self):
         from .fs import NodlehsFuse
         FUSE(NodlehsFuse(self), self.mountpoint, debug=True)
-        self.commit()
+        self.Commit()
 
     @dbus.service.method(dbus_interface="%s.Branch" % BUS_INTERFACE,
                          in_signature='s')
