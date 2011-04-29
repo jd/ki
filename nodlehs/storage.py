@@ -62,7 +62,7 @@ class StorageManager(dbus.service.Object):
 
     @dbus.service.method(dbus_interface="%s.StorageManager" % BUS_INTERFACE,
                          in_signature='s', out_signature='o')
-    def CreateStorage(self, path):
+    def GetStorage(self, path):
         """Create a storage."""
         if not self.storages.has_key(repo):
             self.storages[repo] = self.create_storage(path)
@@ -70,7 +70,7 @@ class StorageManager(dbus.service.Object):
 
     @dbus.service.method(dbus_interface="%s.StorageManager" % BUS_INTERFACE,
                          out_signature='o')
-    def CreateUserStorage(self):
+    def GetUserStorage(self):
         """Create the default user storage."""
         if self.user_storage is None:
             self.user_storage = self.create_storage()
@@ -145,9 +145,9 @@ class Storage(Repo, dbus.service.Object):
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='s', out_signature='o')
-    def get_branch(self, name):
+    def GetBranch(self, name):
         try:
-            return self._branches[name]
+            return self._branches[name].__dbus_object_path__
         except KeyError:
             self._branches[name] = Branch(self, name)
         return self._branches[name].__dbus_object_path__
