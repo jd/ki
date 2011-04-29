@@ -53,37 +53,37 @@ class StorageManager(dbus.service.Object):
         super(StorageManager, self).__init__(busname, "%s/%s" % (BUS_PATH,
                                                                  self.__class__.__name__))
 
-    def create_storage(self, path):
+    def create_storage(self, path=None):
+        if path is None:
+            path = xdg.BaseDirectory.save_data_path("nodlehs/storage")
         if len(os.listdir(path)) is 0:
             return Storage.init_bare(self.busname, path)
         return Storage(self.busname, path)
 
-    @dbus.service.method(dbus_interface=BUS_INTERFACE,
+    @dbus.service.method(dbus_interface="%s.StorageManager" % BUS_INTERFACE,
                          in_signature='s', out_signature='o')
     def CreateStorage(self, path):
         """Create a storage."""
         if not self.storages.has_key(repo):
-            self.storages[repo] = self.create_storage(self.busname, path)
+            self.storages[repo] = self.create_storage(path)
         return self.storages[repo].__dbus_object_path__
 
-    @dbus.service.method(dbus_interface=BUS_INTERFACE,
+    @dbus.service.method(dbus_interface="%s.StorageManager" % BUS_INTERFACE,
                          out_signature='o')
     def CreateUserStorage(self):
         """Create the default user storage."""
         if self.user_storage is None:
-            self.user_storage = self.create_storage(self.busname)
+            self.user_storage = self.create_storage()
         return self.user_storage.__dbus_object_path__
 
 
 class Storage(Repo, dbus.service.Object):
     """Storage based on a repository."""
 
-    def __init__(self, bus, path=None):
+    def __init__(self, bus, path):
         self.bus = bus
         self.remotes = OrderedSet()
         self._branches = {}
-        if path is None:
-            path = xdg.BaseDirectory.save_data_path("nodlehs/storage")
         Repo.__init__(self, path)
         # Build a name
         dbus.service.Object.__init__(self, bus,
@@ -143,14 +143,14 @@ class Storage(Repo, dbus.service.Object):
         # We were unable to fetch
         raise FetchError
 
-    @dbus.service.method(dbus_interface=BUS_INTERFACE,
+    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='s', out_signature='o')
     def get_branch(self, name):
         try:
             return self._branches[name]
         except KeyError:
             self._branches[name] = Branch(self, name)
-        return self._branches[name]
+        return self._branches[name].__dbus_object_path__
 
 
 
@@ -257,7 +257,7 @@ class Branch(dbus.service.Object, threading.Thread):
         from .fs import NodlehsFuse
         FUSE(NodlehsFuse(self), self.mountpoint, debug=True)
 
-    @dbus.service.method(dbus_interface=BUS_INTERFACE,
+    @dbus.service.method(dbus_interface="%s.Branch" % BUS_INTERFACE,
                          in_signature='s')
     def Mount(self, mountpoint):
         if not self.is_alive():

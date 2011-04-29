@@ -98,7 +98,7 @@ class Directory(Storable):
 
     def __init__(self, storage, obj=None):
         if obj is None:
-            obj = Blob()
+            obj = Tree()
         # This is locally modified/added files which will belong to our tree
         # when we will dump ourselves.
         self.local_tree = {}
