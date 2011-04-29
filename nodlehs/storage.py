@@ -20,7 +20,6 @@
 
 from .fuse import FUSE
 from .utils import *
-from .constants import *
 from .objects import Record
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
@@ -28,6 +27,34 @@ import os
 import uuid
 import threading
 import dbus.service
+
+BUS_INTERFACE = "org.naquadah.Nodlehs"
+BUS_PATH = "/org/naquadah/Nodlehs"
+
+_storage_manager = None
+
+def get_storage_manager(bus):
+    global _storage_manager
+    if _storage_manager is None:
+        _storage_manager = StorageManager(bus)
+    return _storage_manager
+
+
+class StorageManager(dbus.service.Object):
+
+    def __init__(self, busname):
+        # XXX Singleton?
+        self.storages = {}
+        self.busname = busname
+        super(StorageManager, self).__init__(busname, "%s/%s" % (BUS_PATH,
+                                                                 self.__class__.__name__))
+
+    @dbus.service.method(dbus_interface=BUS_INTERFACE,
+                         in_signature='s', out_signature='o')
+    def CreateStorage(self, root):
+        if not self.storages.has_key(repo):
+            self.storages[repo] = Storage(self.busname, root)
+        return self.storages[repo].__dbus_object_path__
 
 
 class Storage(Repo, dbus.service.Object):

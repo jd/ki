@@ -18,11 +18,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import nodlehs.bus
+import nodlehs.storage
 import dbus.glib
 import gobject
 
 gobject.threads_init()
 dbus.glib.init_threads()
-nodlehs.bus.init()
+dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+nodlehs.storage.get_storage_manager(dbus.service.BusName(nodlehs.storage.BUS_INTERFACE, dbus.SessionBus()))
 gobject.MainLoop().run()

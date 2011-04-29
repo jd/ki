@@ -5,19 +5,16 @@ import tempfile
 import os
 import shutil
 import dbus.service
-import nodlehs.bus
-from nodlehs.constants import BUS_INTERFACE
 from nodlehs.storage import Storage, Branch
 from nodlehs.objects import File, Directory, Record, NoChild
 from dulwich.objects import *
 
-class TestStorage(unittest.TestCase):
+from TestStorage import init_storage
+
+class TestObjects(unittest.TestCase):
 
     def setUp(self):
-        self.repo_path = tempfile.mktemp()
-        os.mkdir(self.repo_path)
-        self.storage = Storage.init_bare(nodlehs.bus.init().busname, self.repo_path)
-        self.branch = Branch(self.storage, "master")
+        init_storage(self)
 
     def test_Record_find_common_ancestor(self):
         r1 = Record(self.storage)
