@@ -248,8 +248,8 @@ class Directory(Storable):
                 except NoChild, NotDirectory:
                     self[change.new.path] = (change.new.mode, make_object(self.storage, change.new.sha))
                 else:
-                    # Only handle change operation if nothing had been changed
-                    # in the mean time in our tree.
+                    # Only handle change operation if nothing has been
+                    # changed in the mean time in our tree.
                     if change.old.sha == child.id:
                         self[change.new.path] = (change.new.mode, make_object(self.storage, change.new.sha))
                     else:
@@ -265,10 +265,17 @@ class Directory(Storable):
                             self["%s.%s" % (change.new.path, change.new.sha)] = (change.new.mode,
                                                                                  make_object(self.storage,
                                                                                              change.new.sha))
-                            # Store merged content here
-                            f = File(self.storage, Blob())
-                            f.write(conflict.content)
-                            self[change.new.path] = (change.new.mode, f)
+                            # Store merged content in child
+                            child.truncate(0)
+                            child.write(conflict.content)
+                        except MergeBinaryError, OSError:
+                            # Store both files
+                            self["%s.%s" % (change.old.path, change.old.sha)] = (change.old.mode,
+                                                                                 make_object(self.storage,
+                                                                                             change.old.sha))
+                            self["%s.%s" % (change.new.path, change.new.sha)] = (change.new.mode,
+                                                                                 make_object(self.storage,
+                                                                                             change.new.sha))
             elif change.type == diff_tree.CHANGE_UNCHANGED:
                 pass
             elif change.type == diff_tree.CHANGE_ADD \
