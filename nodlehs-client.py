@@ -23,6 +23,14 @@ import dbus
 import nodlehs.storage
 import argparse
 
+
+def commit(commit, **kwargs):
+    branch.Commit()
+
+
+def mount(mountpoint, **kwargs):
+    branch.Mount(mountpoint[0])
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--storage', type=str,
                     help='a storage path')
@@ -35,12 +43,14 @@ subparsers = parser.add_subparsers(help='Action to perform.',
 
 # Mount
 parser_mount = subparsers.add_parser('mount', help='Mount the branch.')
+parser_mount.set_defaults(action=mount)
 parser_mount.add_argument('mountpoint',
                           type=str, nargs=1,
-                          help='The mountpoint.')
+                          help='Them ountpoint.')
 
 # Commit
 parser_mount = subparsers.add_parser('commit', help='Commit the branch immediately.')
+parser_mount.set_defaults(action=commit)
 
 args = parser.parse_args()
 
@@ -56,8 +66,4 @@ storage = bus.get_object(nodlehs.storage.BUS_INTERFACE, storage_path)
 branch_path = storage.GetBranch(args.branch)
 branch = bus.get_object(nodlehs.storage.BUS_INTERFACE, branch_path)
 
-if hasattr(args, "mountpoint"):
-    branch.Mount(args.mountpoint)
-else:
-    branch.Commit()
-
+args.action(**args.__dict__)
