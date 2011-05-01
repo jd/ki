@@ -169,6 +169,11 @@ class Storage(Repo, dbus.service.Object):
                 del self.remotes[k]
                 break
 
+    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
+                         out_signature='a(si)')
+    def ListRemotes(self):
+        return [ (r.url, w) for w, r in self.remotes.iteritems() ]
+
 
 class Branch(dbus.service.Object, threading.Thread):
 
@@ -292,3 +297,4 @@ class Branch(dbus.service.Object, threading.Thread):
         if not self.is_alive():
             self.mountpoint = mountpoint
             self.start()
+
