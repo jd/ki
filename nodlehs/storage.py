@@ -180,7 +180,6 @@ class Branch(dbus.service.Object, threading.Thread):
     def __init__(self, storage, name):
         self.storage = storage
         self.branch_name = name
-        self.current_record_override = None
         # The next record
         self._next_record = None
         dbus.service.Object.__init__(self, storage.bus,
@@ -193,17 +192,14 @@ class Branch(dbus.service.Object, threading.Thread):
         """Return the root directory."""
         return self.record.root
 
+    @property
     def is_writable(self):
-        """Check that the storage is writable."""
-        return self.current_record_override is None
+        return True
 
     @property
     def record(self):
         """Return current record. Default is to return a copy of the current
         commit so it can be modified, or a new commit if no commit exist."""
-
-        if self.current_record_override is not None:
-            return self.current_record_override
 
         if self._next_record is None:
             # Try to copy the current head

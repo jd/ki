@@ -32,7 +32,7 @@ from .utils import Path
 
 @decorator
 def rw(func, self, *args, **kw):
-    if not self.branch.is_writable():
+    if not self.branch.is_writable:
         raise fuse.FuseOSError(errno.EROFS)
 
     return func(self, *args, **kw)
