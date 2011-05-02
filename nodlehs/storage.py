@@ -78,7 +78,27 @@ class StorageManager(dbus.service.Object):
         return self.user_storage.__dbus_object_path__
 
 
-class Storage(Repo, dbus.service.Object):
+class Configurable(dbus.service.Object):
+
+    def __init__(self, bus, path):
+        self.config = {}
+        dbus.service.Object.__init__(self, bus, path)
+
+    @dbus.service.method(dbus_interface="%s" % BUS_INTERFACE,
+                         in_signature='ss')
+    def SetConfig(self, key, value):
+        self.config[key]= value
+
+    @dbus.service.method(dbus_interface="%s" % BUS_INTERFACE,
+                         in_signature='s', out_signature='s')
+    def GetConfig(self, key):
+        try:
+            return self.config[key]
+        except KeyError:
+            return ''
+
+
+class Storage(Repo, Configurable):
     """Storage based on a repository."""
 
     def __init__(self, bus, path):
@@ -86,12 +106,11 @@ class Storage(Repo, dbus.service.Object):
         self.remotes = {}
         self._branches = {}
         Repo.__init__(self, path)
-        # Build a name
-        dbus.service.Object.__init__(self, bus,
-                                     "%s/%s_%s" % (BUS_PATH,
-                                                   filter(lambda x: 'a' <= x <= 'z' or 'A' <= x <= 'Z' or '0' <= x <= '9' or x == '_' ,
-                                                          os.path.splitext(os.path.basename(path))[0]),
-                                                   "".join(map(lambda x: x == '-' and '_' or x, str(uuid.uuid4())))))
+        Configurable.__init__(self, bus,
+                              "%s/%s_%s" % (BUS_PATH,
+                                            filter(lambda x: 'a' <= x <= 'z' or 'A' <= x <= 'Z' or '0' <= x <= '9' or x == '_' ,
+                                                   os.path.splitext(os.path.basename(path))[0]),
+                                            "".join(map(lambda x: x == '-' and '_' or x, str(uuid.uuid4())))))
 
     @classmethod
     def _init_maybe_bare(cls, bus, path, bare):
@@ -175,15 +194,16 @@ class Storage(Repo, dbus.service.Object):
         return [ (r.url, w) for w, r in self.remotes.iteritems() ]
 
 
-class Branch(dbus.service.Object, threading.Thread):
+class Branch(threading.Thread, Configurable):
 
     def __init__(self, storage, name):
+        self.config = {}
         self.storage = storage
         self.branch_name = name
         # The next record
         self._next_record = None
-        dbus.service.Object.__init__(self, storage.bus,
-                                     "%s/%s" % (storage.__dbus_object_path__, name))
+        Configurable.__init__(self, storage.bus,
+                              "%s/%s" % (storage.__dbus_object_path__, name))
         threading.Thread.__init__(self, name="Branch %s on Storage %s" % (name, storage.path))
         self.daemon = True
 
@@ -293,4 +313,3 @@ class Branch(dbus.service.Object, threading.Thread):
         if not self.is_alive():
             self.mountpoint = mountpoint
             self.start()
-

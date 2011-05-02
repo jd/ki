@@ -51,6 +51,20 @@ def remotes_list(**kwargs):
         print "%s" % item[0]
 
 
+def config(key, value, branch, **kwargs):
+    if branch is not None:
+        branch_path = storage.GetBranch(branch)
+        if value is not None:
+            bus.get_object(nodlehs.storage.BUS_INTERFACE, branch_path).SetConfig(key, value)
+        else:
+            print bus.get_object(nodlehs.storage.BUS_INTERFACE, branch_path).GetConfig(key)
+    else:
+        if value is not None:
+            storage.SetConfig(key, value)
+        else:
+            print storage.GetConfig(key)
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--storage', type=str,
                     help='Storage path.')
@@ -58,11 +72,22 @@ subparsers = parser.add_subparsers(help='Action to perform.',
                                    title="Actions",
                                    description="Actions to perform on the given branch.")
 
+# Setprefetch
+parser_config = subparsers.add_parser('config', help='Set or get configuration parameters.')
+parser_config.set_defaults(action=config)
+parser_config.add_argument('--branch', type=str,
+                           help='The branch to set configuration parameter for.')
+parser_config.add_argument('key', type=str,
+                           help='The configuration key to set.')
+parser_config.add_argument('value', type=str,
+                           nargs='?',
+                           help='The configuration value to set.')
+
 # Mount
 parser_mount = subparsers.add_parser('mount', help='Mount the branch.')
 parser_mount.set_defaults(action=mount)
 parser_mount.add_argument('branch', type=str,
-                       help='The branch to mount.')
+                          help='The branch to mount.')
 parser_mount.add_argument('mountpoint',
                           type=str,
                           help='The mountpoint.')
