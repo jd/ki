@@ -211,6 +211,7 @@ class Branch(threading.Thread, Configurable):
     _config_default_values = { "prefetch": "true" }
 
     def __init__(self, storage, name):
+        self._next_record_lock = threading.Lock()
         self.config = {}
         self.storage = storage
         self.branch_name = name
@@ -235,17 +236,18 @@ class Branch(threading.Thread, Configurable):
         """Return current record. Default is to return a copy of the current
         commit so it can be modified, or a new commit if no commit exist."""
 
-        if self._next_record is None:
-            # Try to copy the current head
-            try:
-                self._next_record = Record(self.storage, self.storage[self.head])
+        with self._next_record_lock:
+            if self._next_record is None:
+                # Try to copy the current head
+                try:
+                    self._next_record = Record(self.storage, self.storage[self.head])
                 # Store parent now, for comparison in commit()
-                self._next_record.parents = [ self.head ]
-            except KeyError:
-                # Create a record based on brand new commit!
-                self._next_record = Record(self.storage, None)
+                    self._next_record.parents = [ self.head ]
+                except KeyError:
+                    # Create a record based on brand new commit!
+                    self._next_record = Record(self.storage, None)
 
-        return self._next_record
+            return self._next_record
 
     @property
     def head(self):
@@ -259,58 +261,59 @@ class Branch(threading.Thread, Configurable):
     @dbus.service.method(dbus_interface="%s.Branch" % BUS_INTERFACE)
     def Commit(self):
         """Commit modification to the storage, if needed."""
-        if self._next_record is not None:
-            # XXX We may need to lock _next_record
-            # and have a global object lock in Repo
-            new_root_id = self._next_record.root.id()
-            # Check that there's changes in the next record by comparing its
-            # root tree id against its parent's root tree id, or by checking
-            # if it's a merge record, or the first one. But anyhow, its new
-            # root must be different than head's current, otherwise we
-            # would have nothing to do and could drop that next record.
-            # if is_merge_commit \
-            #     or (first_commit \
-            #         or next_record_has_modification) \
-            #         and next_record_is_different_than_head)
-            print "New root tree id: ",
-            print new_root_id
-            if len(self._next_record.parents) == 0 \
-                    or ((len(self._next_record.parents) > 1 \
-                             or new_root_id != self.storage[self._next_record.parents[0]].tree) \
-                            and new_root_id != self.storage[self.head].tree):
-                # We have a different root tree, so we are different. Hehe.
-                print " Next record root tree is different"
-                try:
-                    head = self.head
-                except KeyError:
-                    head = None
-                # if first_commit or fast_forward
-                if (head is None and len(self._next_record.parents) == 0) \
-                        or (head is not None and head in self._next_record.parents):
-                    # Current head is still one of our parents, so no
-                    # problem updating head. This is a fast-forward.
-                    print "  Doing a fast-forward"
-                    self.head = self._next_record.store()
-                else:
-                    # Hum, current head is not our parent. It changed. We
-                    # need to merge head in the next record to create a
-                    # merge commit.
-                    print "  Merging head into next record"
-                    self._next_record.merge_commit(head)
-                    if not self.refs.set_if_equals("refs/heads/%s" % self.branch_name,
-                                                   head,
-                                                   self._next_record.store()):
-                        # head changed while we were doing our merge, so
-                        # retry to commit once again, merging this new
-                        # head.
-                        print "  head changed, holy shit, recommit!"
-                        return self.Commit()
-            # If _next_record did not change (no root tree change), we just
-            # reset in case head would have changed under our feet while
-            # we were away.
-            # If _next_record changed, we still reset it to make a new one
-            # as soon as someone will need.
-            self._next_record = None
+        with self._next_record_lock:
+            if self._next_record is not None:
+                # XXX We may need to lock _next_record
+                # and have a global object lock in Repo
+                new_root_id = self._next_record.root.id()
+                # Check that there's changes in the next record by comparing its
+                # root tree id against its parent's root tree id, or by checking
+                # if it's a merge record, or the first one. But anyhow, its new
+                # root must be different than head's current, otherwise we
+                # would have nothing to do and could drop that next record.
+                # if is_merge_commit \
+                #     or (first_commit \
+                #         or next_record_has_modification) \
+                #         and next_record_is_different_than_head)
+                print "New root tree id: ",
+                print new_root_id
+                if len(self._next_record.parents) == 0 \
+                        or ((len(self._next_record.parents) > 1 \
+                                 or new_root_id != self.storage[self._next_record.parents[0]].tree) \
+                                and new_root_id != self.storage[self.head].tree):
+                    # We have a different root tree, so we are different. Hehe.
+                    print " Next record root tree is different"
+                    try:
+                        head = self.head
+                    except KeyError:
+                        head = None
+                    # if first_commit or fast_forward
+                    if (head is None and len(self._next_record.parents) == 0) \
+                            or (head is not None and head in self._next_record.parents):
+                        # Current head is still one of our parents, so no
+                        # problem updating head. This is a fast-forward.
+                        print "  Doing a fast-forward"
+                        self.head = self._next_record.store()
+                    else:
+                        # Hum, current head is not our parent. It changed. We
+                        # need to merge head in the next record to create a
+                        # merge commit.
+                        print "  Merging head into next record"
+                        self._next_record.merge_commit(head)
+                        if not self.refs.set_if_equals("refs/heads/%s" % self.branch_name,
+                                                       head,
+                                                       self._next_record.store()):
+                            # head changed while we were doing our merge, so
+                            # retry to commit once again, merging this new
+                            # head.
+                            print "  head changed, holy shit, recommit!"
+                            return self.Commit()
+                # If _next_record did not change (no root tree change), we just
+                # reset in case head would have changed under our feet while
+                # we were away.
+                # If _next_record changed, we still reset it to make a new one
+                # as soon as someone will need.
+                self._next_record = None
 
     @dbus.service.signal(dbus_interface="%s.Branch" % BUS_INTERFACE)
     def Commited(self):
