@@ -41,6 +41,17 @@ class TestObjects(unittest.TestCase):
         self.assert_(len(ret) is 2)
         self.assert_(ret == set([r2, r3]))
 
+    def test_Record_intervals(self):
+        r1 = Record(self.storage)
+        r2 = Record(self.storage)
+        r3 = Record(self.storage)
+        r1.parents = [ r2 ]
+        r2.parents = [ r3 ]
+        self.assert_(r3.commit_intervals(r1) == [ set([ r2 ]) ])
+        self.assert_(r2.commit_intervals(r1) == [])
+        self.assert_(r1.commit_intervals(r3) == [ set([ r2 ] )])
+        self.assert_(r3.commit_intervals(r1, False) is None)
+
     def test_Directory_mkdir(self):
         directory = Directory(self.storage, Tree())
         directory.mkdir("a/b/c")

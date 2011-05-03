@@ -458,6 +458,24 @@ class Record(Storable):
         else:
             self._object.tree = self.root.id()
 
+    def commit_intervals(self, other, rev=True):
+        """Return the list of commits between two records.
+        Return None if not found.
+        If rev is True, try the other way around too, in case objects are inversed."""
+        commits = self.commit_history_list()
+        ret = OrderedSet()
+
+        for commit_set in commits:
+            if other in commit_set:
+                return ret
+            else:
+                ret.append(commit_set)
+
+        if rev:
+            return other.commit_intervals(self, False)
+        else:
+            return None
+
     def commit_history_list(self):
         """Return a list of commit history list for commit using
         breadth-first-search."""
