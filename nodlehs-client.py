@@ -54,15 +54,16 @@ def remotes_list(**kwargs):
 def config(key, value, branch, **kwargs):
     if branch is not None:
         branch_path = storage.GetBranch(branch)
-        if value is not None:
-            bus.get_object(nodlehs.storage.BUS_INTERFACE, branch_path).SetConfig(key, value)
-        else:
-            print bus.get_object(nodlehs.storage.BUS_INTERFACE, branch_path).GetConfig(key)
+        o = bus.get_object(nodlehs.storage.BUS_INTERFACE, branch_path)
     else:
-        if value is not None:
-            storage.SetConfig(key, value)
-        else:
-            print storage.GetConfig(key)
+        o = storage
+    if key is None:
+        for key in o.ListConfigKeys():
+            print key
+    elif value is not None:
+        o.SetConfig(key, value)
+    else:
+        print o.GetConfig(key)
 
 
 parser = argparse.ArgumentParser()
@@ -77,7 +78,7 @@ parser_config = subparsers.add_parser('config', help='Set or get configuration p
 parser_config.set_defaults(action=config)
 parser_config.add_argument('--branch', type=str,
                            help='The branch to set configuration parameter for.')
-parser_config.add_argument('key', type=str,
+parser_config.add_argument('key', type=str, nargs='?',
                            help='The configuration key to set.')
 parser_config.add_argument('value', type=str,
                            nargs='?',

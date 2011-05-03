@@ -81,13 +81,19 @@ class StorageManager(dbus.service.Object):
 class Configurable(dbus.service.Object):
 
     def __init__(self, bus, path):
-        self.config = {}
+        self.config = self._default_configuration.copy()
         dbus.service.Object.__init__(self, bus, path)
+
+    def _export_config(self):
+        """Store configuration and export it."""
+        raise NotImplementedError
 
     @dbus.service.method(dbus_interface="%s" % BUS_INTERFACE,
                          in_signature='ss')
     def SetConfig(self, key, value):
-        self.config[key]= value
+        if key in self._default_configuration.keys():
+            self.config[key]= value
+            self._export_config(self)
 
     @dbus.service.method(dbus_interface="%s" % BUS_INTERFACE,
                          in_signature='s', out_signature='s')
@@ -97,9 +103,16 @@ class Configurable(dbus.service.Object):
         except KeyError:
             return ''
 
+    @dbus.service.method(dbus_interface="%s" % BUS_INTERFACE,
+                         out_signature='as')
+    def ListConfigKeys(self):
+        return self._default_configuration.keys()
+
 
 class Storage(Repo, Configurable):
     """Storage based on a repository."""
+
+    _default_configuration = { "prefetch": "true" }
 
     def __init__(self, bus, path):
         self.bus = bus
@@ -195,6 +208,8 @@ class Storage(Repo, Configurable):
 
 
 class Branch(threading.Thread, Configurable):
+
+    _default_configuration = { "prefetch": "true" }
 
     def __init__(self, storage, name):
         self.config = {}
