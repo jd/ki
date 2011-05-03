@@ -26,6 +26,7 @@ import time
 import socket
 import os
 import pwd
+import cPickle
 from .merge import *
 from StringIO import StringIO
 
@@ -370,6 +371,33 @@ class File(Storable):
         content = merge(self._data.getvalue(), base, other)
         self.truncate(0)
         self.write(content)
+
+
+class Config(File):
+
+    def __init__(self, storage, default_values=dict(), prefix=""):
+        super(Config, self).__init__(storage)
+        self.config = default_values.copy()
+        self.prefix = prefix
+
+    def __getitem__(self, key):
+        return self.config[key]
+
+    def __setitem__(self, key, value):
+        self.config[key] = value
+        print self.store()
+
+    def _update(self, operation_type):
+        print self.config
+        self._object.set_raw_string(cPickle.dumps(self.config))
+
+    def store(self):
+        # Bypass File.store.
+        # Not sure my programming teacher would like it.
+        oid = Storable.store(self)
+        self.storage.refs['refs/tags/%sconfig' % self.prefix ] = oid
+        return oid
+
 
 class Symlink(File):
     """A symlink."""

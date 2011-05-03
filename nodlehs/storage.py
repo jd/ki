@@ -20,7 +20,7 @@
 
 from .fuse import FUSE
 from .utils import *
-from .objects import Record
+from .objects import Record, Config
 from .remote import Remote
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
@@ -80,8 +80,8 @@ class StorageManager(dbus.service.Object):
 
 class Configurable(dbus.service.Object):
 
-    def __init__(self, bus, path):
-        self.config = self._default_configuration.copy()
+    def __init__(self, storage, prefix, bus, path):
+        self.config = Config(storage, self._config_default_values, prefix)
         dbus.service.Object.__init__(self, bus, path)
 
     def _export_config(self):
@@ -91,9 +91,8 @@ class Configurable(dbus.service.Object):
     @dbus.service.method(dbus_interface="%s" % BUS_INTERFACE,
                          in_signature='ss')
     def SetConfig(self, key, value):
-        if key in self._default_configuration.keys():
-            self.config[key]= value
-            self._export_config(self)
+        if key in self._config_default_values.keys():
+            self.config[key]= str(value)
 
     @dbus.service.method(dbus_interface="%s" % BUS_INTERFACE,
                          in_signature='s', out_signature='s')
@@ -106,20 +105,20 @@ class Configurable(dbus.service.Object):
     @dbus.service.method(dbus_interface="%s" % BUS_INTERFACE,
                          out_signature='as')
     def ListConfigKeys(self):
-        return self._default_configuration.keys()
+        return self._config_default_values.keys()
 
 
 class Storage(Repo, Configurable):
     """Storage based on a repository."""
 
-    _default_configuration = { "prefetch": "true" }
+    _config_default_values = { "prefetch": "true" }
 
     def __init__(self, bus, path):
         self.bus = bus
         self.remotes = {}
         self._branches = {}
         Repo.__init__(self, path)
-        Configurable.__init__(self, bus,
+        Configurable.__init__(self, self, "", bus,
                               "%s/%s_%s" % (BUS_PATH,
                                             filter(lambda x: 'a' <= x <= 'z' or 'A' <= x <= 'Z' or '0' <= x <= '9' or x == '_' ,
                                                    os.path.splitext(os.path.basename(path))[0]),
@@ -209,7 +208,7 @@ class Storage(Repo, Configurable):
 
 class Branch(threading.Thread, Configurable):
 
-    _default_configuration = { "prefetch": "true" }
+    _config_default_values = { "prefetch": "true" }
 
     def __init__(self, storage, name):
         self.config = {}
@@ -217,7 +216,7 @@ class Branch(threading.Thread, Configurable):
         self.branch_name = name
         # The next record
         self._next_record = None
-        Configurable.__init__(self, storage.bus,
+        Configurable.__init__(self, self.storage, "%s_" % name, storage.bus,
                               "%s/%s" % (storage.__dbus_object_path__, name))
         threading.Thread.__init__(self, name="Branch %s on Storage %s" % (name, storage.path))
         self.daemon = True
