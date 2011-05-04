@@ -375,10 +375,11 @@ class File(Storable):
 
 class Config(File):
 
-    def __init__(self, storage, default_values=dict(), prefix=""):
+    ref = 'refs/tags/config'
+
+    def __init__(self, storage, default_values=dict()):
         super(Config, self).__init__(storage)
         self.config = default_values.copy()
-        self.prefix = prefix
 
     def __getitem__(self, key):
         return self.config[key]
@@ -394,7 +395,7 @@ class Config(File):
         # Bypass File.store.
         # Not sure my programming teacher would like it.
         oid = Storable.store(self)
-        self.storage.refs['refs/tags/%sconfig' % self.prefix ] = oid
+        self.storage.refs[self.ref] = oid
         return oid
 
 

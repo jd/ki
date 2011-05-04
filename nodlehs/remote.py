@@ -18,6 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from .objects import Config
 from dulwich.client import get_transport_and_path
 
 class FetchError(Exception):
@@ -41,7 +42,7 @@ class Remote(object):
             raise FetchError(sha1s)
 
     def _fetch_config(self):
-        self.client.fetch(self.path, self.storage, "refs/tags/config")
+        self.client.fetch(self.path, self.storage, Config.ref)
 
     def push(self, refs):
         self.client.send_pack(self.path,
