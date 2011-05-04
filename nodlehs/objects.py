@@ -387,7 +387,7 @@ class Config(File):
     @classmethod
     def from_sha1(cls, storage, sha1):
         """Build a Config object based on a git SHA1 object."""
-        return cls(storage, cPickle.loads(make_object(storage, sha1)._data.getvalue()))
+        return cls(storage, cPickle.loads(storage[sha1].data))
 
     def __getitem__(self, key):
         return self.config[key]
