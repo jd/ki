@@ -385,10 +385,9 @@ class Config(File):
 
     def __setitem__(self, key, value):
         self.config[key] = value
-        print self.store()
+        self.store()
 
     def _update(self, operation_type):
-        print self.config
         self._object.set_raw_string(cPickle.dumps(self.config))
 
     def store(self):

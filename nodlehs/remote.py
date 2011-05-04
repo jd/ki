@@ -40,6 +40,9 @@ class Remote(object):
         except IOError:
             raise FetchError(sha1s)
 
+    def _fetch_config(self):
+        self.client.fetch(self.path, self.storage, "refs/tags/config")
+
     def push(self, refs):
         self.client.send_pack(self.path,
                               lambda oldrefs: refs,

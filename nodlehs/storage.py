@@ -78,37 +78,7 @@ class StorageManager(dbus.service.Object):
         return self.user_storage.__dbus_object_path__
 
 
-class Configurable(dbus.service.Object):
-
-    def __init__(self, storage, prefix, bus, path):
-        self.config = Config(storage, self._config_default_values, prefix)
-        dbus.service.Object.__init__(self, bus, path)
-
-    def _export_config(self):
-        """Store configuration and export it."""
-        raise NotImplementedError
-
-    @dbus.service.method(dbus_interface="%s" % BUS_INTERFACE,
-                         in_signature='ss')
-    def SetConfig(self, key, value):
-        if key in self._config_default_values.keys():
-            self.config[key]= str(value)
-
-    @dbus.service.method(dbus_interface="%s" % BUS_INTERFACE,
-                         in_signature='s', out_signature='s')
-    def GetConfig(self, key):
-        try:
-            return self.config[key]
-        except KeyError:
-            return ''
-
-    @dbus.service.method(dbus_interface="%s" % BUS_INTERFACE,
-                         out_signature='as')
-    def ListConfigKeys(self):
-        return self._config_default_values.keys()
-
-
-class Storage(Repo, Configurable):
+class Storage(Repo, dbus.service.Object):
     """Storage based on a repository."""
 
     _config_default_values = { "prefetch": "true" }
@@ -117,12 +87,13 @@ class Storage(Repo, Configurable):
         self.bus = bus
         self.remotes = {}
         self._branches = {}
+        self.config = Config(self, self._config_default_values)
         Repo.__init__(self, path)
-        Configurable.__init__(self, self, "", bus,
-                              "%s/%s_%s" % (BUS_PATH,
-                                            filter(lambda x: 'a' <= x <= 'z' or 'A' <= x <= 'Z' or '0' <= x <= '9' or x == '_' ,
-                                                   os.path.splitext(os.path.basename(path))[0]),
-                                            "".join(map(lambda x: x == '-' and '_' or x, str(uuid.uuid4())))))
+        dbus.service.Object.__init__(self, bus,
+                                     "%s/%s_%s" % (BUS_PATH,
+                                                   filter(lambda x: 'a' <= x <= 'z' or 'A' <= x <= 'Z' or '0' <= x <= '9' or x == '_' ,
+                                                          os.path.splitext(os.path.basename(path))[0]),
+                                                   "".join(map(lambda x: x == '-' and '_' or x, str(uuid.uuid4())))))
 
     @classmethod
     def _init_maybe_bare(cls, bus, path, bare):
@@ -205,10 +176,27 @@ class Storage(Repo, Configurable):
     def ListRemotes(self):
         return [ (r.url, w) for w, r in self.remotes.iteritems() ]
 
+    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
+                         in_signature='ss')
+    def SetConfig(self, key, value):
+        if key in self._config_default_values.keys():
+            self.config[key]= str(value)
 
-class Branch(threading.Thread, Configurable):
+    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
+                         in_signature='s', out_signature='s')
+    def GetConfig(self, key):
+        try:
+            return self.config[key]
+        except KeyError:
+            return ''
 
-    _config_default_values = { "prefetch": "true" }
+    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
+                         out_signature='as')
+    def ListConfigKeys(self):
+        return self._config_default_values.keys()
+
+
+class Branch(threading.Thread, dbus.service.Object):
 
     def __init__(self, storage, name):
         self._next_record_lock = threading.Lock()
@@ -217,8 +205,8 @@ class Branch(threading.Thread, Configurable):
         self.branch_name = name
         # The next record
         self._next_record = None
-        Configurable.__init__(self, self.storage, "%s_" % name, storage.bus,
-                              "%s/%s" % (storage.__dbus_object_path__, name))
+        dbus.service.Object.__init__(self, storage.bus,
+                                     "%s/%s" % (storage.__dbus_object_path__, name))
         threading.Thread.__init__(self, name="Branch %s on Storage %s" % (name, storage.path))
         self.daemon = True
 
