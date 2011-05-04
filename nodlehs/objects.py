@@ -176,7 +176,7 @@ class Directory(Storable):
             try:
                 (mode, subdir) = subdir.child(curdir)
             except NoChild:
-                subdir[curdir] = (stat.S_IFDIR, Directory(self.storage, Tree()))
+                subdir[curdir] = (stat.S_IFDIR, Directory(self.storage))
                 subdir = subdir[curdir][1]
 
         return subdir
@@ -436,7 +436,7 @@ class Record(Storable):
         if commit is None:
             commit = Commit()
             need_update = True
-            self.root = Directory(storage, Tree())
+            self.root = Directory(storage)
         else:
             self.root = Directory(storage, storage[commit.tree])
             need_update = False
