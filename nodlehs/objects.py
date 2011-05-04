@@ -374,12 +374,20 @@ class File(Storable):
 
 
 class Config(File):
+    """A configuration.
+    This is basically a dict stored in a File using pickling."""
 
     ref = 'refs/tags/config'
 
     def __init__(self, storage, default_values=dict()):
+        """Create a new Config object."""
         super(Config, self).__init__(storage)
         self.config = default_values.copy()
+
+    @classmethod
+    def from_sha1(cls, storage, sha1):
+        """Build a Config object based on a git SHA1 object."""
+        return cls(storage, cPickle.loads(make_object(storage, sha1)._data.getvalue()))
 
     def __getitem__(self, key):
         return self.config[key]
@@ -392,6 +400,7 @@ class Config(File):
         self._object.set_raw_string(cPickle.dumps(self.config))
 
     def store(self):
+        """Store the config in the storage."""
         # Bypass File.store.
         # Not sure my programming teacher would like it.
         oid = Storable.store(self)

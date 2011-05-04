@@ -41,8 +41,27 @@ class Remote(object):
         except IOError:
             raise FetchError(sha1s)
 
-    def _fetch_config(self):
-        self.client.fetch(self.path, self.storage, Config.ref)
+    def _config_read_remote_refs(self, oldrefs):
+        """Callback function used when getting config from the remote.
+
+        This is used to determine the "wants" while fetching. We try to
+        fetch the ref named Config.ref if it exists, and store its SHA1 for
+        future use in self._config_sha. Otherwise we just return an empty
+        list."""
+        try:
+            self._config_sha = oldrefs[Config.ref]
+        except KeyError:
+            # No config in remote :(
+            self._config_sha = None
+            return []
+        return [ self._config_sha ]
+
+    @property
+    def config(self):
+        # Fetch configuration from the remote.
+        self.client.fetch(self.path, self.storage, self._config_read_remote_refs)
+        return Config.from_sha1(self.storage, self._config_sha)
+
 
     def push(self, refs):
         self.client.send_pack(self.path,
