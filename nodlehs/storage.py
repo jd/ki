@@ -137,10 +137,8 @@ class Storage(Repo, dbus.service.Object):
 
     def iterremotes(self):
         """Iterate over remotes, honoring weight."""
-        k = self.remotes.keys()
-        k.sort()
-        for remote in k:
-            yield remote
+        for weight in sorted(self.remotes.keys()):
+            yield self.remotes[weight]
 
     def _fetch_sha1(self, sha1):
         for remote in self.iterremotes():
