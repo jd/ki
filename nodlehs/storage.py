@@ -313,7 +313,7 @@ class Box(threading.Thread, dbus.service.Object):
 
     @dbus.service.signal(dbus_interface="%s.Box" % BUS_INTERFACE)
     def Commited(self):
-        pass
+        self.storage.push()
 
     def run(self):
         from .fs import NodlehsFuse
