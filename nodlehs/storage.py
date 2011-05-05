@@ -121,7 +121,7 @@ class Storage(Repo, dbus.service.Object):
 
     def push(self):
         """Push boxes and its blobs/tags to remotes."""
-        for remote in self.remotes:
+        for remote in self.iterremotes():
             try:
                 remote.push(self.determine_wants)
             except UpdateRefsError:
@@ -135,8 +135,15 @@ class Storage(Repo, dbus.service.Object):
             # SHA1 not found, try to fetch it
             return super(Storage, self).__getitem__(self._fetch_sha1(key))
 
+    def iterremotes(self):
+        """Iterate over remotes, honoring weight."""
+        k = self.remotes.keys()
+        k.sort()
+        for remote in k:
+            yield remote
+
     def _fetch_sha1(self, sha1):
-        for remote in self.remotes:
+        for remote in self.iterremotes():
             # Try to fetch and return the sha1 if ok
             try:
                 remote.fetch_sha1s([ sha1 ])
