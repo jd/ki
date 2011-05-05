@@ -62,6 +62,10 @@ class Remote(object):
         self.client.fetch(self.path, self.storage, self._config_read_remote_refs)
         return Config.from_sha1(self.storage, self._config_sha)
 
+    @property
+    def refs(self):
+        """Connect to the remote and returns all the refs it has."""
+        return self.client.fetch(self.path, self.storage, lambda refs: [])
 
     def push(self, refs):
         self.client.send_pack(self.path,
