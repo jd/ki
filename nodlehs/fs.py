@@ -32,7 +32,7 @@ from .utils import Path
 
 @decorator
 def rw(func, self, *args, **kw):
-    if not self.branch.is_writable:
+    if not self.box.is_writable:
         raise fuse.FuseOSError(errno.EROFS)
 
     return func(self, *args, **kw)
@@ -41,16 +41,16 @@ def rw(func, self, *args, **kw):
 class NodlehsFuse(fuse.Operations):
     """The Nodlehs file system."""
 
-    def __init__(self, branch):
+    def __init__(self, box):
         self.start_time = time.time()
-        self.branch = branch
+        self.box = box
         self.fds = {}
         super(NodlehsFuse, self).__init__()
 
     def access(self, path, amode):
         (mode, child) = self._get_child(path)
 
-        if amode & posix.W_OK and not self.branch.is_writable():
+        if amode & posix.W_OK and not self.box.is_writable():
             raise fuse.FuseOSError(errno.EACCES)
         if amode & posix.X_OK:
             if not mode & stat.S_IXUSR and not mode & stat.S_IFDIR:
@@ -84,7 +84,7 @@ class NodlehsFuse(fuse.Operations):
             s['st_ctime'] = self.start_time
         else:
             # XXX accessing object is not that good.
-            s['st_ctime'] = self.branch.record.object.commit_time
+            s['st_ctime'] = self.box.record.object.commit_time
         try:
             s['st_mtime'] = child.mtime
         except AttributeError:
@@ -127,7 +127,7 @@ class NodlehsFuse(fuse.Operations):
     def open(self, path, flags):
         (mode, child) = self._get_child(path, File)
 
-        if not self.branch.is_writable() and flags & (os.O_WRONLY | os.O_RDWR):
+        if not self.box.is_writable() and flags & (os.O_WRONLY | os.O_RDWR):
             raise fuse.FuseOSError(errno.EROFS)
 
         return self.to_fd(mode, child)
@@ -146,7 +146,7 @@ class NodlehsFuse(fuse.Operations):
     @rw
     def _create(self, path, mode, obj):
         try:
-            self.branch.root[path] = (mode, obj)
+            self.box.root[path] = (mode, obj)
         except NoChild:
             raise fuse.FuseOSError(errno.ENOENT)
         except NotDirectory:
@@ -155,22 +155,22 @@ class NodlehsFuse(fuse.Operations):
         return self.to_fd(mode, obj)
 
     def mkdir(self, path, mode):
-        self._create(path, stat.S_IFDIR | mode, Directory(self.branch.storage))
+        self._create(path, stat.S_IFDIR | mode, Directory(self.box.storage))
 
     def create(self, path, mode):
-        return self._create(path, mode, File(self.branch.storage))
+        return self._create(path, mode, File(self.box.storage))
 
     def mknod(self, path, mode, dev):
         if not stat.S_ISREG(mode):
             raise fuse.FuseOSError(errno.EINVAL)
 
-        return self._create(path, mode, File(self.branch.storage))
+        return self._create(path, mode, File(self.box.storage))
 
     @rw
     def rename(self, old, new):
         try:
-            self.branch.root[new] = self.branch.root[old]
-            del self.branch.root[old]
+            self.box.root[new] = self.box.root[old]
+            del self.box.root[old]
         except NotDirectory:
             raise fuse.FuseOSError(errno.ENOTDIR)
         except NoChild:
@@ -179,7 +179,7 @@ class NodlehsFuse(fuse.Operations):
     @rw
     def chmod(self, path, mode):
         try:
-            self.branch.root[path] = (mode, self.branch.root[path][1])
+            self.box.root[path] = (mode, self.box.root[path][1])
         except NotDirectory:
             raise fuse.FuseOSError(errno.ENOTDIR)
         except NoChild:
@@ -194,7 +194,7 @@ class NodlehsFuse(fuse.Operations):
         """Get the mode and child of path.
         Also check that child is instance of cls."""
         try:
-            (mode, child) = self.branch.root[path]
+            (mode, child) = self.box.root[path]
         except NotDirectory:
             raise fuse.FuseOSError(errno.ENOTDIR)
         except NoChild:
@@ -228,7 +228,7 @@ class NodlehsFuse(fuse.Operations):
     def symlink(self, target, source):
         target = Path(target)
         (target_directory_mode, target_directory) = self._get_child(target[:-1])
-        target_directory.add(target[-1], stat.S_IFLNK, Symlink(self.branch.storage, target=source))
+        target_directory.add(target[-1], stat.S_IFLNK, Symlink(self.box.storage, target=source))
 
     def readlink(self, path):
         return str(self._get_child(path, Symlink)[1])

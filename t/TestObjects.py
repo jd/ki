@@ -5,7 +5,7 @@ import tempfile
 import os
 import shutil
 import dbus.service
-from nodlehs.storage import Storage, Branch
+from nodlehs.storage import Storage
 from nodlehs.objects import File, Directory, Record, NoChild
 from dulwich.objects import *
 

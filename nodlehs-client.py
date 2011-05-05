@@ -24,14 +24,14 @@ import nodlehs.storage
 import argparse
 
 
-def commit(branch, **kwargs):
-    branch_path = storage.GetBranch(branch)
-    bus.get_object(nodlehs.storage.BUS_INTERFACE, branch_path).Commit()
+def commit(box, **kwargs):
+    box_path = storage.GetBox(box)
+    bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).Commit()
 
 
-def mount(branch, mountpoint, **kwargs):
-    branch_path = storage.GetBranch(branch)
-    bus.get_object(nodlehs.storage.BUS_INTERFACE, branch_path).Mount(mountpoint)
+def mount(box, mountpoint, **kwargs):
+    box_path = storage.GetBox(box)
+    bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).Mount(mountpoint)
 
 
 def remotes_add(url, weight, **kwargs):
@@ -67,7 +67,7 @@ parser.add_argument('--storage', type=str,
                     help='Storage path.')
 subparsers = parser.add_subparsers(help='Action to perform.',
                                    title="Actions",
-                                   description="Actions to perform on the given branch.")
+                                   description="Actions to perform on the given box.")
 
 # Setprefetch
 parser_config = subparsers.add_parser('config', help='Set or get configuration parameters.')
@@ -79,18 +79,18 @@ parser_config.add_argument('value', type=str,
                            help='The configuration value to set.')
 
 # Mount
-parser_mount = subparsers.add_parser('mount', help='Mount the branch.')
+parser_mount = subparsers.add_parser('mount', help='Mount the box.')
 parser_mount.set_defaults(action=mount)
-parser_mount.add_argument('branch', type=str,
-                          help='The branch to mount.')
+parser_mount.add_argument('box', type=str,
+                          help='The box to mount.')
 parser_mount.add_argument('mountpoint',
                           type=str,
                           help='The mountpoint.')
 # Commit
-parser_mount = subparsers.add_parser('commit', help='Commit the branch immediately.')
+parser_mount = subparsers.add_parser('commit', help='Commit the box immediately.')
 parser_mount.set_defaults(action=commit)
-parser_mount.add_argument('branch', type=str,
-                          help='The branch to commit.')
+parser_mount.add_argument('box', type=str,
+                          help='The box to commit.')
 
 # Remotes
 parser_remotes = subparsers.add_parser('remotes', help='List the remotes.')

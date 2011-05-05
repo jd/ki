@@ -84,7 +84,7 @@ class Storage(Repo, dbus.service.Object):
     def __init__(self, bus, path):
         self.bus = bus
         self.remotes = {}
-        self._branches = {}
+        self._boxes = {}
         self.config = Config(self, self._config_default_values)
         Repo.__init__(self, path)
         dbus.service.Object.__init__(self, bus,
@@ -107,7 +107,7 @@ class Storage(Repo, dbus.service.Object):
         return cls._init_maybe_bare(bus, path, True)
 
     def push(self):
-        """Push all branches and all tags to remotes."""
+        """Push all boxes/branches and all tags to remotes."""
         # XXX Do not push every objects, respect what the remote wants.
         #     This could be done by fetching refs/tags/config on the remote, which
         #     would be a blob with the configuration file or the configuration object
@@ -145,12 +145,12 @@ class Storage(Repo, dbus.service.Object):
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='s', out_signature='o')
-    def GetBranch(self, name):
+    def GetBox(self, name):
         try:
-            return self._branches[name].__dbus_object_path__
+            return self._boxes[name].__dbus_object_path__
         except KeyError:
-            self._branches[name] = Branch(self, name)
-        return self._branches[name].__dbus_object_path__
+            self._boxes[name] = Box(self, name)
+        return self._boxes[name].__dbus_object_path__
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='si', out_signature='o')
@@ -199,18 +199,18 @@ class Storage(Repo, dbus.service.Object):
         return self._config_default_values.keys()
 
 
-class Branch(threading.Thread, dbus.service.Object):
+class Box(threading.Thread, dbus.service.Object):
 
     def __init__(self, storage, name):
         self._next_record_lock = threading.Lock()
         self.config = {}
         self.storage = storage
-        self.branch_name = name
+        self.box_name = name
         # The next record
         self._next_record = None
         dbus.service.Object.__init__(self, storage.bus,
                                      "%s/%s" % (storage.__dbus_object_path__, name))
-        threading.Thread.__init__(self, name="Branch %s on Storage %s" % (name, storage.path))
+        threading.Thread.__init__(self, name="Box %s on Storage %s" % (name, storage.path))
         self.daemon = True
 
     @property
@@ -242,14 +242,14 @@ class Branch(threading.Thread, dbus.service.Object):
 
     @property
     def head(self):
-        return self.storage.refs["refs/heads/%s" % self.branch_name]
+        return self.storage.refs["refs/heads/%s" % self.box_name]
 
     @head.setter
     def head(self, value):
-        self.storage.refs['refs/heads/%s' % self.branch_name] = value
+        self.storage.refs['refs/heads/%s' % self.box_name] = value
         self.Commited()
 
-    @dbus.service.method(dbus_interface="%s.Branch" % BUS_INTERFACE)
+    @dbus.service.method(dbus_interface="%s.Box" % BUS_INTERFACE)
     def Commit(self):
         """Commit modification to the storage, if needed."""
         with self._next_record_lock:
@@ -291,7 +291,7 @@ class Branch(threading.Thread, dbus.service.Object):
                         # merge commit.
                         print "  Merging head into next record"
                         self._next_record.merge_commit(head)
-                        if not self.refs.set_if_equals("refs/heads/%s" % self.branch_name,
+                        if not self.refs.set_if_equals("refs/heads/%s" % self.box_name,
                                                        head,
                                                        self._next_record.store()):
                             # head changed while we were doing our merge, so
@@ -306,7 +306,7 @@ class Branch(threading.Thread, dbus.service.Object):
                 # as soon as someone will need.
                 self._next_record = None
 
-    @dbus.service.signal(dbus_interface="%s.Branch" % BUS_INTERFACE)
+    @dbus.service.signal(dbus_interface="%s.Box" % BUS_INTERFACE)
     def Commited(self):
         pass
 
@@ -315,7 +315,7 @@ class Branch(threading.Thread, dbus.service.Object):
         FUSE(NodlehsFuse(self), self.mountpoint, debug=True)
         self.Commit()
 
-    @dbus.service.method(dbus_interface="%s.Branch" % BUS_INTERFACE,
+    @dbus.service.method(dbus_interface="%s.Box" % BUS_INTERFACE,
                          in_signature='s')
     def Mount(self, mountpoint):
         if not self.is_alive():
