@@ -124,7 +124,7 @@ class Storage(Repo, dbus.service.Object):
         for remote in self.remotes:
             try:
                 remote.push(self.determine_wants)
-            except UpdateRefsError
+            except UpdateRefsError:
                 # XXX We should probably fetch in such a case.
                 pass
 
