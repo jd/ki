@@ -21,16 +21,14 @@
 from .fuse import FUSE
 from .utils import *
 from .objects import Record, Config
-from .remote import Remote
+from .remote import BUS_INTERFACE, Remote
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
 import os
 import xdg.BaseDirectory
-import uuid
 import threading
 import dbus.service
 
-BUS_INTERFACE = "org.naquadah.Nodlehs"
 BUS_PATH = "/org/naquadah/Nodlehs"
 
 _storage_manager = None
@@ -91,9 +89,8 @@ class Storage(Repo, dbus.service.Object):
         Repo.__init__(self, path)
         dbus.service.Object.__init__(self, bus,
                                      "%s/%s_%s" % (BUS_PATH,
-                                                   filter(lambda x: 'a' <= x <= 'z' or 'A' <= x <= 'Z' or '0' <= x <= '9' or x == '_' ,
-                                                          os.path.splitext(os.path.basename(path))[0]),
-                                                   "".join(map(lambda x: x == '-' and '_' or x, str(uuid.uuid4())))))
+                                                   dbus_clean_name(os.path.splitext(os.path.basename(path))[0]),
+                                                   dbus_uuid()))
 
     @classmethod
     def _init_maybe_bare(cls, bus, path, bare):
@@ -156,25 +153,26 @@ class Storage(Repo, dbus.service.Object):
         return self._branches[name].__dbus_object_path__
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
-                         in_signature='si')
+                         in_signature='si', out_signature='o')
     def AddRemote(self, url, weight):
         if url not in [ r.url for r in self.remotes.values() ]:
             while self.remotes.has_key(weight):
                 weight += 1
             self.remotes[weight] = Remote(self, url)
+        return self.remotes[weight].__dbus_object_path__
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
-                         in_signature='s')
-    def RemoveRemote(self, url):
+                         in_signature='o')
+    def RemoveRemote(self, object_path):
         for k, r in self.remotes.iteritems():
-            if r.url == url:
+            if r.__dbus_object_path__ == object_path:
                 del self.remotes[k]
                 break
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
-                         out_signature='a(si)')
+                         out_signature='a(oi)')
     def ListRemotes(self):
-        return [ (r.url, w) for w, r in self.remotes.iteritems() ]
+        return [ (r.__dbus_object_path__, w) for w, r in self.remotes.iteritems() ]
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          out_signature='s')

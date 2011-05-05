@@ -19,7 +19,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .objects import Config
+from .utils import dbus_uuid, dbus_clean_name
 from dulwich.client import get_transport_and_path
+import dbus.service
+
+BUS_INTERFACE = "org.naquadah.Nodlehs"
 
 class FetchError(Exception):
     pass
@@ -28,12 +32,21 @@ def progress(x):
     print "FETCH PROGRESS: ",
     print x
 
-class Remote(object):
+class Remote(dbus.service.Object):
 
     def __init__(self, storage, url):
         self.url = url
         self.storage = storage
         self.client, self.path = get_transport_and_path(url)
+        super(Remote, self).__init__(storage.bus,
+                                     "%s/remote_%s_%s" % (storage.__dbus_object_path__,
+                                                          dbus_clean_name(self.url),
+                                                          dbus_uuid()))
+
+    @dbus.service.method(dbus_interface="%s.Remote" % BUS_INTERFACE,
+                         out_signature='s')
+    def GetURL(self):
+        return self.url
 
     def fetch_sha1s(self, sha1s):
         try:

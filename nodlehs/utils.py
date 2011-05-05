@@ -20,6 +20,7 @@
 
 import os
 import threading
+import uuid
 
 class Path(object):
     """Magical path object.
@@ -125,3 +126,11 @@ class Singleton(object):
     """Singleton class."""
 
     __metaclass__ = SingletonType
+
+def dbus_clean_name(s):
+    """Return a string cleaned from any disallowed item in a D-Bus path."""
+    return filter(lambda x: 'a' <= x <= 'z' or 'A' <= x <= 'Z' or '0' <= x <= '9' or x == '_', s)
+
+def dbus_uuid():
+    """Return an UUID usable in a D-Bus object path."""
+    return "".join(map(lambda x: x == '-' and '_' or x, str(uuid.uuid4())))

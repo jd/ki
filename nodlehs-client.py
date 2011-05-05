@@ -43,12 +43,9 @@ def remotes_remove(url, **kwargs):
 
 
 def remotes_list(**kwargs):
-    print "Weight │ URL"
-    print "───────┼────"
     for item in storage.ListRemotes():
-        print "%6d" % item[1],
-        print "│",
-        print "%s" % item[0]
+        print "%d: %s" % (item[1], item[0])
+        print "    URL: %s" % bus.get_object(nodlehs.storage.BUS_INTERFACE, item[0]).GetURL()
 
 
 def config(key, value, **kwargs):
