@@ -48,6 +48,11 @@ class Remote(dbus.service.Object):
     def GetURL(self):
         return self.url
 
+    @dbus.service.method(dbus_interface="%s.Remote" % BUS_INTERFACE,
+                         out_signature='a{ss}')
+    def GetRefs(self):
+        return self.refs
+
     def fetch_sha1s(self, sha1s):
         try:
             self.client.fetch(self.path, self.storage, lambda refs: sha1s, progress)

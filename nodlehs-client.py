@@ -45,7 +45,11 @@ def remotes_remove(url, **kwargs):
 def remotes_list(**kwargs):
     for item in storage.ListRemotes():
         print "%d: %s" % (item[1], item[0])
-        print "    URL: %s" % bus.get_object(nodlehs.storage.BUS_INTERFACE, item[0]).GetURL()
+        r = bus.get_object(nodlehs.storage.BUS_INTERFACE, item[0])
+        print "    URL: %s" % r.GetURL()
+        print "    Refs:"
+        for ref, sha in r.GetRefs().iteritems():
+            print "        %30s %s" % (ref[-30:], sha)
 
 
 def config(key, value, **kwargs):
