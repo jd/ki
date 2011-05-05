@@ -24,6 +24,6 @@ from .utils import *
 class TimeCommiter(RepeatTimer):
     """A commiter that commit every N seconds."""
 
-    def __init__(self, storage, time):
+    def __init__(self, box, time):
         self.daemon = True
-        super(TimeCommiter, self).__init__(time, storage.commit_and_push)
+        super(TimeCommiter, self).__init__(time, box.Commit)

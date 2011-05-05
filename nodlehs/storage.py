@@ -22,6 +22,7 @@ from .fuse import FUSE
 from .utils import *
 from .objects import Record, Config
 from .remote import BUS_INTERFACE, Remote
+from .commiter import TimeCommiter
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
 import os
@@ -316,6 +317,7 @@ class Box(threading.Thread, dbus.service.Object):
 
     def run(self):
         from .fs import NodlehsFuse
+        TimeCommitter(self, 300).start()
         FUSE(NodlehsFuse(self), self.mountpoint, debug=True)
         self.Commit()
 
