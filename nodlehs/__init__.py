@@ -22,7 +22,6 @@ __author__ = "Julien Danjou <julien@danjou.info>"
 
 import storage
 import objects
-import bus
 import remote
 import utils
 
