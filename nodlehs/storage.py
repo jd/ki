@@ -317,7 +317,7 @@ class Box(threading.Thread, dbus.service.Object):
 
     def run(self):
         from .fs import NodlehsFuse
-        TimeCommitter(self, 300).start()
+        TimeCommiter(self, 300).start()
         FUSE(NodlehsFuse(self), self.mountpoint, debug=True)
         self.Commit()
 
