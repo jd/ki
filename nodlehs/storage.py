@@ -106,21 +106,24 @@ class Storage(Repo, dbus.service.Object):
     def init_bare(cls, bus, path):
         return cls._init_maybe_bare(bus, path, True)
 
+    def _push_determine_wants(self, refs):
+        """Determine wants for a remote having refs.
+        Return a dict { ref: sha } used to update the remote when pushing."""
+        # Only push if the remote has already the branch
+        # Find common branches
+        common = set(refs.keys()) & set(self._boxes.keys())
+        # XXX If remote has prefetch, push the blob of
+        # refs[box_name]..self._boxes[box_name].head
+        # …if the push has been successful
+        # (would be stupid to push blobs is branch are totally different)
+        return dict([ (box_name, self._boxes[box_name].head) for box_name in common ])
+
     def push(self):
-        """Push all boxes/branches and all tags to remotes."""
-        # XXX Do not push every objects, respect what the remote wants.
-        #     This could be done by fetching refs/tags/config on the remote, which
-        #     would be a blob with the configuration file or the configuration object
-        #     we could pickle. :)
-        refs = dict([ ("refs/tags/%s" % tag, ref)
-                      for tag, ref in self.refs.as_dict("refs/tags").iteritems() ])
-        refs.update(dict([ ("refs/heads/%s" % head, ref)
-                      for tag, ref in self.refs.as_dict("refs/heads").iteritems() ]))
-        # XXX Make that threaded?
+        """Push boxes and its blobs/tags to remotes."""
         for remote in self.remotes:
             try:
-                remote.push(refs)
-            except UpdateRefsError:
+                remote.push(self.determine_wants)
+            except UpdateRefsError
                 # XXX We should probably fetch in such a case.
                 pass
 
@@ -146,11 +149,12 @@ class Storage(Repo, dbus.service.Object):
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='s', out_signature='o')
     def GetBox(self, name):
+        keyname = "refs/heads/%s" % name
         try:
-            return self._boxes[name].__dbus_object_path__
+            return self._boxes[keyname].__dbus_object_path__
         except KeyError:
-            self._boxes[name] = Box(self, name)
-        return self._boxes[name].__dbus_object_path__
+            self._boxes[keyname] = Box(self, name)
+        return self._boxes[keyname].__dbus_object_path__
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='si', out_signature='o')

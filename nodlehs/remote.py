@@ -85,7 +85,11 @@ class Remote(dbus.service.Object):
         """Connect to the remote and returns all the refs it has."""
         return self.client.fetch(self.path, self.storage, lambda refs: [])
 
-    def push(self, refs):
+    def push(self, determine_wants):
+        """Push data to the remote.
+        The function passed in determine_wants is called with the refs dict as first and only argument:
+        { "refs/heads/master": "08a1c9f9742bcbd27c44fb84b662c68fabd995e1",
+          … } """
         self.client.send_pack(self.path,
-                              lambda oldrefs: refs,
+                              determine_wants,
                               self.storage.object_store.generate_pack_contents)
