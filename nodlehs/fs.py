@@ -50,7 +50,7 @@ class NodlehsFuse(fuse.Operations):
     def access(self, path, amode):
         (mode, child) = self._get_child(path)
 
-        if amode & posix.W_OK and not self.box.is_writable():
+        if amode & posix.W_OK and not self.box.is_writable:
             raise fuse.FuseOSError(errno.EACCES)
         if amode & posix.X_OK:
             if not mode & stat.S_IXUSR and not mode & stat.S_IFDIR:
@@ -131,7 +131,7 @@ class NodlehsFuse(fuse.Operations):
     def open(self, path, flags):
         (mode, child) = self._get_child(path, File)
 
-        if not self.box.is_writable() and flags & (os.O_WRONLY | os.O_RDWR):
+        if not self.box.is_writable and flags & (os.O_WRONLY | os.O_RDWR):
             raise fuse.FuseOSError(errno.EROFS)
 
         return self.to_fd(mode, child)
