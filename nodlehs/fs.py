@@ -121,6 +121,10 @@ class NodlehsFuse(fuse.Operations):
     def release(self, path, fh):
         del self.fds[fh]
 
+        # Commit as soon as no more fds are opened
+        if not self.fds:
+            self.box.Commit()
+
     def releasedir(self, path, fh):
         del self.fds[fh]
 
