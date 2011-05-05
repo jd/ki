@@ -177,6 +177,11 @@ class Storage(Repo, dbus.service.Object):
         return [ (r.url, w) for w, r in self.remotes.iteritems() ]
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
+                         out_signature='s')
+    def GetPath(self):
+        return self.path
+
+    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='ss')
     def SetConfig(self, key, value):
         if key in self._config_default_values.keys():
