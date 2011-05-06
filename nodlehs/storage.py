@@ -175,7 +175,7 @@ class Storage(Repo, dbus.service.Object):
                          in_signature='s')
     def RemoveRemote(self, name):
         try:
-            del self.remotes[k]
+            del self.remotes[name]
         except KeyError:
             pass
 
