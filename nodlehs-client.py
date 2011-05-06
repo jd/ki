@@ -19,10 +19,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
+import os
 import dbus
 import nodlehs.storage
 import argparse
-
+import tempfile
 
 def commit(box, **kwargs):
     box_path = storage.GetBox(box)
@@ -55,6 +56,18 @@ def remotes_list(**kwargs):
 def config(what, **kwargs):
     if what == 'set':
         storage.SetConfig(sys.stdin.read())
+    elif what == 'edit':
+        tmpf = tempfile.mktemp()
+        with file(tmpf, "w") as f:
+            f.write(storage.GetConfig())
+        ret = os.system("%s %s" % (os.getenv("EDITOR"), tmpf))
+        if ret == 0:
+            with file(tmpf, "r") as f:
+                storage.SetConfig(f.read())
+        try:
+            os.unlink(tmpf)
+        except:
+            pass
     else:
         print storage.GetConfig()
 
@@ -69,7 +82,7 @@ subparsers = parser.add_subparsers(help='Action to perform.',
 # Config
 parser_config = subparsers.add_parser('config', help='Dump or set storage configuration.')
 parser_config.set_defaults(action=config)
-parser_config.add_argument('what', type=str, choices=['dump', 'set'],
+parser_config.add_argument('what', type=str, choices=['dump', 'set', 'edit'],
                           help='The action to perform.')
 # Mount
 parser_mount = subparsers.add_parser('mount', help='Mount the box.')
