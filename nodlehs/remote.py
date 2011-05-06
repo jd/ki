@@ -85,7 +85,11 @@ class Remote(dbus.service.Object, Configurable):
     def config(self):
         # Fetch configuration from the remote.
         self.client.fetch(self.path, self.storage, self._config_read_remote_refs)
-        return Config(self.storage, self.on_config_store, self.storage[self._config_sha])
+        if self._config_sha is None:
+            obj = None
+        else:
+            obj = self.storage[self._config_sha]
+        return Config(self.storage, self.on_config_store, obj)
 
     def on_config_store(self, sha1):
         self.push(lambda oldrefs: { Config.ref: sha1 })
