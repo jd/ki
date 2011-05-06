@@ -392,7 +392,7 @@ class Config(File):
 
     def _update(self, operation_type):
         self.truncate(0)
-        json.dump(self._config, self)
+        json.dump(self._config, self, indent=4)
         super(Config, self)._update(operation_type)
 
     def store(self):
