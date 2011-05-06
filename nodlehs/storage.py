@@ -85,16 +85,19 @@ class Storage(Repo, dbus.service.Object):
         self.remotes = {}
         self._boxes = {}
         Repo.__init__(self, path)
+        dbus.service.Object.__init__(self, bus,
+                                     "%s/%s_%s" % (BUS_PATH,
+                                                   dbus_clean_name(os.path.splitext(os.path.basename(path))[0]),
+                                                   dbus_uuid()))
+
+    @property
+    def config(self):
         try:
             config_blob = self[self.refs[Config.ref]]
         except KeyError:
             # No config
             config_blob = None
-        self.config = Config(self, self.on_config_store, config_blob)
-        dbus.service.Object.__init__(self, bus,
-                                     "%s/%s_%s" % (BUS_PATH,
-                                                   dbus_clean_name(os.path.splitext(os.path.basename(path))[0]),
-                                                   dbus_uuid()))
+        return Config(self, self.on_config_store, config_blob)
 
     def on_config_store(self, sha):
         """Function called when the configuration is modified and stored on
