@@ -269,7 +269,7 @@ class Directory(Storable):
                             # Store merged content in child
                             child.truncate(0)
                             child.write(conflict.content)
-                        except MergeBinaryError, OSError:
+                        except (MergeBinaryError, OSError):
                             # Store both files
                             self["%s.%s" % (change.old.path, change.old.sha)] = (change.old.mode,
                                                                                  make_object(self.storage,
