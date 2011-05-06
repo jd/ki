@@ -141,8 +141,8 @@ class Storage(Repo, dbus.service.Object):
 
     def iterremotes(self):
         """Iterate over remotes, honoring weight."""
-        for weight in sorted(self.remotes.keys()):
-            yield self.remotes[weight]
+        for remote in sorted(self.remotes.values()):
+            yield remote
 
     def _fetch_sha1(self, sha1):
         for remote in self.iterremotes():
@@ -167,26 +167,24 @@ class Storage(Repo, dbus.service.Object):
         return self._boxes[keyname].__dbus_object_path__
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
-                         in_signature='si', out_signature='o')
-    def AddRemote(self, url, weight):
-        if url not in [ r.url for r in self.remotes.values() ]:
-            while self.remotes.has_key(weight):
-                weight += 1
-            self.remotes[weight] = Remote(self, url)
-        return self.remotes[weight].__dbus_object_path__
+                         in_signature='ssi', out_signature='o')
+    def AddRemote(self, name, url, weight):
+        if not self.remotes.has_key(name):
+            self.remotes[name] = Remote(self, name, url, weight)
+        return self.remotes[name].__dbus_object_path__
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
-                         in_signature='o')
-    def RemoveRemote(self, object_path):
-        for k, r in self.remotes.iteritems():
-            if r.__dbus_object_path__ == object_path:
-                del self.remotes[k]
-                break
+                         in_signature='s')
+    def RemoveRemote(self, name):
+        try:
+            del self.remotes[k]
+        except KeyError:
+            pass
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
-                         out_signature='a(oi)')
+                         out_signature='ao')
     def ListRemotes(self):
-        return [ (r.__dbus_object_path__, w) for w, r in self.remotes.iteritems() ]
+        return [ r.__dbus_object_path__ for r in  self.remotes.itervalues() ]
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          out_signature='s')

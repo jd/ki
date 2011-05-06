@@ -34,14 +34,14 @@ def progress(x):
 
 class Remote(dbus.service.Object):
 
-    def __init__(self, storage, url):
+    def __init__(self, storage, name, url, weight=100):
         self.url = url
+        self.weight = weight
         self.storage = storage
+        self.name = name
         self.client, self.path = get_transport_and_path(url)
         super(Remote, self).__init__(storage.bus,
-                                     "%s/remote_%s_%s" % (storage.__dbus_object_path__,
-                                                          dbus_clean_name(self.url),
-                                                          dbus_uuid()))
+                                     "%s/remotes/%s" % (storage.__dbus_object_path__, name))
 
     @dbus.service.method(dbus_interface="%s.Remote" % BUS_INTERFACE,
                          out_signature='s')
@@ -49,9 +49,24 @@ class Remote(dbus.service.Object):
         return self.url
 
     @dbus.service.method(dbus_interface="%s.Remote" % BUS_INTERFACE,
+                         out_signature='s')
+    def GetName(self):
+        return self.name
+
+    @dbus.service.method(dbus_interface="%s.Remote" % BUS_INTERFACE,
                          out_signature='a{ss}')
     def GetRefs(self):
         return self.refs
+
+    @dbus.service.method(dbus_interface="%s.Remote" % BUS_INTERFACE,
+                         out_signature='s')
+    def GetConfig(self):
+        return str(self.config)
+
+    @dbus.service.method(dbus_interface="%s.Remote" % BUS_INTERFACE,
+                         out_signature='i')
+    def GetWeight(self):
+        return self.weight
 
     def fetch_sha1s(self, sha1s):
         try:
@@ -89,7 +104,28 @@ class Remote(dbus.service.Object):
         """Push data to the remote.
         The function passed in determine_wants is called with the refs dict as first and only argument:
         { "refs/heads/master": "08a1c9f9742bcbd27c44fb84b662c68fabd995e1",
-          … } """
+        … } """
         self.client.send_pack(self.path,
                               determine_wants,
                               self.storage.object_store.generate_pack_contents)
+
+    def __le__(self, other):
+        if isinstance(other, Remote):
+            return self.weight <= other.weight
+        return self.weight <= other
+
+    def __lt__(self, other):
+        if isinstance(other, Remote):
+            return self.weight < other.weight
+        return self.weight < other
+
+    def __ge__(self, other):
+        if isinstance(other, Remote):
+            return self.weight >= other.weight
+        return self.weight >= other
+
+    def __gt__(self, other):
+        if isinstance(other, Remote):
+            return self.weight > other.weight
+        return self.weight > other
+

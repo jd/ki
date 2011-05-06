@@ -35,19 +35,20 @@ def mount(box, mountpoint, **kwargs):
     bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).Mount(mountpoint)
 
 
-def remote_add(url, weight, **kwargs):
-    storage.AddRemote(url, weight)
+def remote_add(name, url, weight, **kwargs):
+    storage.AddRemote(name, url, weight)
 
 
-def remote_remove(url, **kwargs):
-    storage.RemoveRemote(url)
+def remote_remove(name, **kwargs):
+    storage.RemoveRemote(name)
 
 
 def remote_list(**kwargs):
     for item in storage.ListRemotes():
-        print "%d: %s" % (item[1], item[0])
-        r = bus.get_object(nodlehs.storage.BUS_INTERFACE, item[0])
+        r = bus.get_object(nodlehs.storage.BUS_INTERFACE, item)
+        print "%s:" % r.GetName()
         print "    URL: %s" % r.GetURL()
+        print "    Weight: %d" % r.GetWeight()
         print "    Refs:"
         for ref, sha in r.GetRefs().iteritems():
             print "        %30s %s" % (ref[-30:], sha)
@@ -109,11 +110,13 @@ parser_remote_list.set_defaults(action=remote_list)
 ## Add
 parser_remote_add = subparsers_remote.add_parser('add', help='Add a remote.')
 parser_remote_add.set_defaults(action=remote_add)
+parser_remote_add.add_argument('name', type=str,
+                               help='Remote name.')
 parser_remote_add.add_argument('url', type=str,
                                help='Remote URL.')
 parser_remote_add.add_argument('weight', type=int,
-                               default=100,
-                               help='Remote URL weight.')
+                               default=100, nargs='?',
+                               help='Remote weight.')
 ## Remove
 parser_remote_remove = subparsers_remote.add_parser('remove', help='Remove a remote.')
 parser_remote_remove.set_defaults(action=remote_remove)
