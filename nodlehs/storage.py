@@ -29,7 +29,6 @@ import os
 import xdg.BaseDirectory
 import threading
 import dbus.service
-import json
 
 BUS_PATH = "/org/naquadah/Nodlehs"
 
