@@ -22,12 +22,10 @@ from .config import Configurable, Config, BUS_INTERFACE
 from dulwich.client import get_transport_and_path
 import dbus.service
 
+
 class FetchError(Exception):
     pass
 
-def progress(x):
-    print "FETCH PROGRESS: ",
-    print x
 
 class Remote(dbus.service.Object, Configurable):
 
@@ -62,42 +60,39 @@ class Remote(dbus.service.Object, Configurable):
 
     def fetch_sha1s(self, sha1s):
         try:
-            self.client.fetch(self.path, self.storage, lambda refs: sha1s, progress)
+            self.fetch(lambda refs: sha1s)
         except IOError:
             raise FetchError(sha1s)
 
-    def _config_read_remote_refs(self, oldrefs):
-        """Callback function used when getting config from the remote.
-
-        This is used to determine the "wants" while fetching. We try to
-        fetch the ref named Config.ref if it exists, and store its SHA1 for
-        future use in self._config_sha. Otherwise we just return an empty
-        list."""
-        try:
-            self._config_sha = oldrefs[Config.ref]
-        except KeyError:
-            # No config in remote :(
-            self._config_sha = None
-            return []
-        return [ self._config_sha ]
-
     @property
     def config(self):
-        # Fetch configuration from the remote.
-        self.client.fetch(self.path, self.storage, self._config_read_remote_refs)
-        if self._config_sha is None:
-            obj = None
-        else:
-            obj = self.storage[self._config_sha]
-        return Config(self.storage, self.on_config_store, obj)
+        """Fetch configuration from the remote."""
+        try:
+            return Config(self.storage, self.on_config_store, self.storage[self.refs[Config.ref]])
+        except KeyError:
+            return Config(self.storage, self.on_config_store)
 
     def on_config_store(self, sha1):
+        """Store the config on the remote."""
         self.push(lambda oldrefs: { Config.ref: sha1 })
 
     @property
     def refs(self):
         """Connect to the remote and returns all the refs it has."""
-        return self.client.fetch(self.path, self.storage, lambda refs: [])
+        return self.fetch(lambda refs: [])
+
+    @dbus.service.signal(dbus_interface="%s.Remote" % BUS_INTERFACE,
+                         signature='ass')
+    def FetchProgress(self, sha1, status):
+        pass
+
+    def fetch(self, determine_wants):
+        """Fetch data from the remote.
+        The function passed in determine_wats is called with the refs dict as first and only argument:
+        { "refs/heads/master": "08a1c9f9742bcbd27c44fb84b662c68fabd995e1",
+        … }
+        The determine_wants function should returns a list of SHA1 to fetch."""
+        return self.client.fetch(self.path, self.storage, determine_wants, self.FetchProgress)
 
     def push(self, determine_wants):
         """Push data to the remote.
