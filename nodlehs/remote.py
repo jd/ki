@@ -19,7 +19,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .objects import Config
-from .utils import dbus_uuid, dbus_clean_name
 from dulwich.client import get_transport_and_path
 import dbus.service
 
