@@ -63,6 +63,11 @@ class Remote(dbus.service.Object):
         return str(self.config)
 
     @dbus.service.method(dbus_interface="%s.Remote" % BUS_INTERFACE,
+                         in_signature='s')
+    def SetConfig(self, conf):
+        self.config.load_json(conf)
+
+    @dbus.service.method(dbus_interface="%s.Remote" % BUS_INTERFACE,
                          out_signature='i')
     def GetWeight(self):
         return self.weight
@@ -92,7 +97,10 @@ class Remote(dbus.service.Object):
     def config(self):
         # Fetch configuration from the remote.
         self.client.fetch(self.path, self.storage, self._config_read_remote_refs)
-        return Config(self.storage, self.storage[self._config_sha])
+        return Config(self.storage, self.on_config_store,self.storage[self._config_sha])
+
+    def on_config_store(self, sha1):
+        self.push(lambda oldrefs: { Config.ref: sha1 })
 
     @property
     def refs(self):

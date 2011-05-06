@@ -378,6 +378,10 @@ class Config(File):
 
     ref = 'refs/tags/config'
 
+    def __init__(self, storage, on_store, obj=None):
+        super(Config, self).__init__(storage, obj)
+        self.on_store = on_store
+
     def load_json(self, value):
         """Load JSON data."""
         self._config = json.loads(value)
@@ -400,7 +404,7 @@ class Config(File):
         # Bypass File.store.
         # Not sure my programming teacher would like it.
         oid = Storable.store(self)
-        self.storage.refs[self.ref] = oid
+        self.on_store(oid)
         return oid
 
 

@@ -25,6 +25,23 @@ import nodlehs.storage
 import argparse
 import tempfile
 
+
+def _edit_with_tempfile(s):
+    tmpf = tempfile.mktemp()
+    with file(tmpf, "w") as f:
+        f.write(s)
+    if os.system("%s %s" % (os.getenv("EDITOR"), tmpf)) == 0:
+        with file(tmpf, "r") as f:
+            s = f.read()
+    else:
+        s = None
+    try:
+        os.unlink(tmpf)
+    except:
+        pass
+    return s
+
+
 def commit(box, **kwargs):
     box_path = storage.GetBox(box)
     bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).Commit()
@@ -33,6 +50,18 @@ def commit(box, **kwargs):
 def mount(box, mountpoint, **kwargs):
     box_path = storage.GetBox(box)
     bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).Mount(mountpoint)
+
+
+def _config(obj, what):
+    if what == 'set':
+        obj.SetConfig(sys.stdin.read())
+    elif what == 'edit':
+        obj.SetConfig(_edit_with_tempfile(obj.GetConfig()))
+    else:
+        print obj.GetConfig()
+
+def config(what, **kwargs):
+    _config(storage, what)
 
 
 def remote_add(name, url, weight, **kwargs):
@@ -62,28 +91,8 @@ def remote_showrefs(name, **kwargs):
         print "        %30s %s" % (ref[-30:], sha)
 
 
-def remote_config_dump(name, **kwargs):
-    r = _remote_name_to_obj(name)
-    print r.GetConfig()
-
-
-def config(what, **kwargs):
-    if what == 'set':
-        storage.SetConfig(sys.stdin.read())
-    elif what == 'edit':
-        tmpf = tempfile.mktemp()
-        with file(tmpf, "w") as f:
-            f.write(storage.GetConfig())
-        ret = os.system("%s %s" % (os.getenv("EDITOR"), tmpf))
-        if ret == 0:
-            with file(tmpf, "r") as f:
-                storage.SetConfig(f.read())
-        try:
-            os.unlink(tmpf)
-        except:
-            pass
-    else:
-        print storage.GetConfig()
+def remote_config(what, name, **kwargs):
+    _config(_remote_name_to_obj(name), what)
 
 
 parser = argparse.ArgumentParser()
@@ -142,12 +151,10 @@ parser_remote_remove.add_argument('name', type=str,
                                   help='Remote name.')
 ## Config
 parser_remote_config = subparsers_remote.add_parser('config', help='Remote config access.')
-subparser_remote_config = parser_remote_config.add_subparsers(help='Action to perform on remote config.',
-                                                              title='Actions',
-                                                              description='Action to perform on the given remote config.')
-parser_remote_config_dump = subparser_remote_config.add_parser('dump', help='Dump config.')
-parser_remote_config_dump.set_defaults(action=remote_config_dump)
-parser_remote_config_dump.add_argument('name', type=str, help='Remote name.')
+parser_remote_config.set_defaults(action=remote_config)
+parser_remote_config.add_argument('what', type=str, choices=['dump', 'set', 'edit'],
+                           help='The action to perform.')
+parser_remote_config.add_argument('name', type=str, help='Remote name.')
 
 
 args = parser.parse_args()
