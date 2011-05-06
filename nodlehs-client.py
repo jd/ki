@@ -35,15 +35,15 @@ def mount(box, mountpoint, **kwargs):
     bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).Mount(mountpoint)
 
 
-def remotes_add(url, weight, **kwargs):
+def remote_add(url, weight, **kwargs):
     storage.AddRemote(url, weight)
 
 
-def remotes_remove(url, **kwargs):
+def remote_remove(url, **kwargs):
     storage.RemoveRemote(url)
 
 
-def remotes_list(**kwargs):
+def remote_list(**kwargs):
     for item in storage.ListRemotes():
         print "%d: %s" % (item[1], item[0])
         r = bus.get_object(nodlehs.storage.BUS_INTERFACE, item[0])
@@ -83,7 +83,7 @@ subparsers = parser.add_subparsers(help='Action to perform.',
 parser_config = subparsers.add_parser('config', help='Dump or set storage configuration.')
 parser_config.set_defaults(action=config)
 parser_config.add_argument('what', type=str, choices=['dump', 'set', 'edit'],
-                          help='The action to perform.')
+                           help='The action to perform.')
 # Mount
 parser_mount = subparsers.add_parser('mount', help='Mount the box.')
 parser_mount.set_defaults(action=mount)
@@ -99,26 +99,26 @@ parser_mount.add_argument('box', type=str,
                           help='The box to commit.')
 
 # Remotes
-parser_remotes = subparsers.add_parser('remotes', help='List the remotes.')
-subparsers_remotes = parser_remotes.add_subparsers(help='Action to perform on remotes.',
-                                                   title='Actions',
-                                                   description='Action to perform on the given remote of a storage.')
+parser_remote = subparsers.add_parser('remote', help='Act on remotes.')
+subparsers_remote = parser_remote.add_subparsers(help='Action to perform on remotes.',
+                                                 title='Actions',
+                                                 description='Action to perform on the given remote of a storage.')
 ## List
-parser_remotes_list = subparsers_remotes.add_parser('list', help='List remotes.')
-parser_remotes_list.set_defaults(action=remotes_list)
+parser_remote_list = subparsers_remote.add_parser('list', help='List remotes.')
+parser_remote_list.set_defaults(action=remote_list)
 ## Add
-parser_remotes_add = subparsers_remotes.add_parser('add', help='Add a remote.')
-parser_remotes_add.set_defaults(action=remotes_add)
-parser_remotes_add.add_argument('url', type=str,
-                                help='Remote URL.')
-parser_remotes_add.add_argument('weight', type=int,
-                                default=100,
-                                help='Remote URL weight.')
+parser_remote_add = subparsers_remote.add_parser('add', help='Add a remote.')
+parser_remote_add.set_defaults(action=remote_add)
+parser_remote_add.add_argument('url', type=str,
+                               help='Remote URL.')
+parser_remote_add.add_argument('weight', type=int,
+                               default=100,
+                               help='Remote URL weight.')
 ## Remove
-parser_remotes_remove = subparsers_remotes.add_parser('remove', help='Remove a remote.')
-parser_remotes_remove.set_defaults(action=remotes_remove)
-parser_remotes_remove.add_argument('url', type=str,
-                                   help='Remote URL.')
+parser_remote_remove = subparsers_remote.add_parser('remove', help='Remove a remote.')
+parser_remote_remove.set_defaults(action=remote_remove)
+parser_remote_remove.add_argument('url', type=str,
+                                  help='Remote URL.')
 
 args = parser.parse_args()
 
