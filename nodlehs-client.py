@@ -51,11 +51,21 @@ def remote_list(**kwargs):
         print "    Weight: %d" % r.GetWeight()
 
 
-def remote_showrefs(name, **kwargs):
-    r = bus.get_object(nodlehs.storage.BUS_INTERFACE,
+def _remote_name_to_obj(name):
+    return bus.get_object(nodlehs.storage.BUS_INTERFACE,
                        "%s/remotes/%s" % (storage.__dbus_object_path__, name))
+
+
+def remote_showrefs(name, **kwargs):
+    r = _remote_name_to_obj(name)
     for ref, sha in r.GetRefs().iteritems():
         print "        %30s %s" % (ref[-30:], sha)
+
+
+def remote_config_dump(name, **kwargs):
+    r = _remote_name_to_obj(name)
+    print r.GetConfig()
+
 
 def config(what, **kwargs):
     if what == 'set':
@@ -130,6 +140,15 @@ parser_remote_remove = subparsers_remote.add_parser('remove', help='Remove a rem
 parser_remote_remove.set_defaults(action=remote_remove)
 parser_remote_remove.add_argument('name', type=str,
                                   help='Remote name.')
+## Config
+parser_remote_config = subparsers_remote.add_parser('config', help='Remote config access.')
+subparser_remote_config = parser_remote_config.add_subparsers(help='Action to perform on remote config.',
+                                                              title='Actions',
+                                                              description='Action to perform on the given remote config.')
+parser_remote_config_dump = subparser_remote_config.add_parser('dump', help='Dump config.')
+parser_remote_config_dump.set_defaults(action=remote_config_dump)
+parser_remote_config_dump.add_argument('name', type=str, help='Remote name.')
+
 
 args = parser.parse_args()
 
