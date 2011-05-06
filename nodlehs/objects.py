@@ -26,7 +26,6 @@ import time
 import socket
 import os
 import pwd
-import json
 from .merge import *
 from StringIO import StringIO
 
@@ -371,41 +370,6 @@ class File(Storable):
         content = merge(self._data.getvalue(), base, other)
         self.truncate(0)
         self.write(content)
-
-
-class Config(File):
-    """A configuration based on JSON."""
-
-    ref = 'refs/tags/config'
-
-    def __init__(self, storage, on_store, obj=None):
-        super(Config, self).__init__(storage, obj)
-        self.on_store = on_store
-
-    def load_json(self, value):
-        """Load JSON data."""
-        self._config = json.loads(value)
-        self.store()
-
-    def __getitem__(self, key):
-        return self._config[key]
-
-    def __setitem__(self, key, value):
-        self._config[key] = value
-        self.store()
-
-    def _update(self, operation_type):
-        self.truncate(0)
-        json.dump(self._config, self, indent=4)
-        super(Config, self)._update(operation_type)
-
-    def store(self):
-        """Store the config in the storage."""
-        # Bypass File.store.
-        # Not sure my programming teacher would like it.
-        oid = Storable.store(self)
-        self.on_store(oid)
-        return oid
 
 
 class Symlink(File):

@@ -20,8 +20,9 @@
 
 from .fuse import FUSE
 from .utils import *
-from .objects import Record, Config
-from .remote import BUS_INTERFACE, Remote
+from .config import Configurable, Config, BUS_INTERFACE
+from .objects import Record
+from .remote import Remote
 from .commiter import TimeCommiter
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
@@ -77,7 +78,7 @@ class StorageManager(dbus.service.Object):
         return self.user_storage.__dbus_object_path__
 
 
-class Storage(Repo, dbus.service.Object):
+class Storage(Repo, dbus.service.Object, Configurable):
     """Storage based on a repository."""
 
     def __init__(self, bus, path):
@@ -196,16 +197,6 @@ class Storage(Repo, dbus.service.Object):
                          out_signature='s')
     def GetPath(self):
         return self.path
-
-    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
-                         in_signature='s')
-    def SetConfig(self, conf):
-        self.config.load_json(conf)
-
-    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
-                         out_signature='s')
-    def GetConfig(self):
-        return str(self.config)
 
 
 class Box(threading.Thread, dbus.service.Object):

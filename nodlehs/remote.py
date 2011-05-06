@@ -18,11 +18,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .objects import Config
+from .config import Configurable, Config, BUS_INTERFACE
 from dulwich.client import get_transport_and_path
 import dbus.service
-
-BUS_INTERFACE = "org.naquadah.Nodlehs"
 
 class FetchError(Exception):
     pass
@@ -31,7 +29,7 @@ def progress(x):
     print "FETCH PROGRESS: ",
     print x
 
-class Remote(dbus.service.Object):
+class Remote(dbus.service.Object, Configurable):
 
     def __init__(self, storage, name, url, weight=100):
         self.url = url
@@ -56,16 +54,6 @@ class Remote(dbus.service.Object):
                          out_signature='a{ss}')
     def GetRefs(self):
         return self.refs
-
-    @dbus.service.method(dbus_interface="%s.Remote" % BUS_INTERFACE,
-                         out_signature='s')
-    def GetConfig(self):
-        return str(self.config)
-
-    @dbus.service.method(dbus_interface="%s.Remote" % BUS_INTERFACE,
-                         in_signature='s')
-    def SetConfig(self, conf):
-        self.config.load_json(conf)
 
     @dbus.service.method(dbus_interface="%s.Remote" % BUS_INTERFACE,
                          out_signature='i')
@@ -97,7 +85,7 @@ class Remote(dbus.service.Object):
     def config(self):
         # Fetch configuration from the remote.
         self.client.fetch(self.path, self.storage, self._config_read_remote_refs)
-        return Config(self.storage, self.on_config_store,self.storage[self._config_sha])
+        return Config(self.storage, self.on_config_store, self.storage[self._config_sha])
 
     def on_config_store(self, sha1):
         self.push(lambda oldrefs: { Config.ref: sha1 })
