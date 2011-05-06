@@ -78,7 +78,7 @@ class Remote(dbus.service.Object):
     def config(self):
         # Fetch configuration from the remote.
         self.client.fetch(self.path, self.storage, self._config_read_remote_refs)
-        return Config.from_sha1(self.storage, self._config_sha)
+        return Config(self.storage, self.storage[self._config_sha])
 
     @property
     def refs(self):

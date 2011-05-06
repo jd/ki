@@ -52,14 +52,11 @@ def remotes_list(**kwargs):
             print "        %30s %s" % (ref[-30:], sha)
 
 
-def config(key, value, **kwargs):
-    if key is None:
-        for key in storage.ListConfigKeys():
-            print key
-    elif value is not None:
-        storage.SetConfig(key, value)
+def config(what, **kwargs):
+    if what == 'set':
+        storage.SetConfig(sys.stdin.read())
     else:
-        print storage.GetConfig(key)
+        print storage.GetConfig()
 
 
 parser = argparse.ArgumentParser()
@@ -69,15 +66,11 @@ subparsers = parser.add_subparsers(help='Action to perform.',
                                    title="Actions",
                                    description="Actions to perform on the given box.")
 
-# Setprefetch
-parser_config = subparsers.add_parser('config', help='Set or get configuration parameters.')
+# Config
+parser_config = subparsers.add_parser('config', help='Dump or set storage configuration.')
 parser_config.set_defaults(action=config)
-parser_config.add_argument('key', type=str, nargs='?',
-                           help='The configuration key to set.')
-parser_config.add_argument('value', type=str,
-                           nargs='?',
-                           help='The configuration value to set.')
-
+parser_config.add_argument('what', type=str, choices=['dump', 'set'],
+                          help='The action to perform.')
 # Mount
 parser_mount = subparsers.add_parser('mount', help='Mount the box.')
 parser_mount.set_defaults(action=mount)

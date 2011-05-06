@@ -29,6 +29,7 @@ import os
 import xdg.BaseDirectory
 import threading
 import dbus.service
+import json
 
 BUS_PATH = "/org/naquadah/Nodlehs"
 
@@ -80,14 +81,17 @@ class StorageManager(dbus.service.Object):
 class Storage(Repo, dbus.service.Object):
     """Storage based on a repository."""
 
-    _config_default_values = { "prefetch": "true" }
-
     def __init__(self, bus, path):
         self.bus = bus
         self.remotes = {}
         self._boxes = {}
-        self.config = Config(self, self._config_default_values)
         Repo.__init__(self, path)
+        try:
+            config_blob = self[self.refs[Config.ref]]
+        except KeyError:
+            # No config
+            config_blob = None
+        self.config = Config(self, config_blob)
         dbus.service.Object.__init__(self, bus,
                                      "%s/%s_%s" % (BUS_PATH,
                                                    dbus_clean_name(os.path.splitext(os.path.basename(path))[0]),
@@ -190,23 +194,14 @@ class Storage(Repo, dbus.service.Object):
         return self.path
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
-                         in_signature='ss')
-    def SetConfig(self, key, value):
-        if key in self._config_default_values.keys():
-            self.config[key]= str(value)
+                         in_signature='s')
+    def SetConfig(self, conf):
+        self.config.load_json(conf)
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
-                         in_signature='s', out_signature='s')
-    def GetConfig(self, key):
-        try:
-            return self.config[key]
-        except KeyError:
-            return ''
-
-    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
-                         out_signature='as')
-    def ListConfigKeys(self):
-        return self._config_default_values.keys()
+                         out_signature='s')
+    def GetConfig(self):
+        return str(self.config)
 
 
 class Box(threading.Thread, dbus.service.Object):

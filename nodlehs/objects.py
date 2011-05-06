@@ -26,7 +26,7 @@ import time
 import socket
 import os
 import pwd
-import cPickle
+import json
 from .merge import *
 from StringIO import StringIO
 
@@ -374,30 +374,26 @@ class File(Storable):
 
 
 class Config(File):
-    """A configuration.
-    This is basically a dict stored in a File using pickling."""
+    """A configuration based on JSON."""
 
     ref = 'refs/tags/config'
 
-    def __init__(self, storage, default_values=dict()):
-        """Create a new Config object."""
-        super(Config, self).__init__(storage)
-        self.config = default_values.copy()
-
-    @classmethod
-    def from_sha1(cls, storage, sha1):
-        """Build a Config object based on a git SHA1 object."""
-        return cls(storage, cPickle.loads(storage[sha1].data))
+    def load_json(self, value):
+        """Load JSON data."""
+        self._config = json.loads(value)
+        self.store()
 
     def __getitem__(self, key):
-        return self.config[key]
+        return self._config[key]
 
     def __setitem__(self, key, value):
-        self.config[key] = value
+        self._config[key] = value
         self.store()
 
     def _update(self, operation_type):
-        self._object.set_raw_string(cPickle.dumps(self.config))
+        self.truncate(0)
+        json.dump(self._config, self)
+        super(Config, self)._update(operation_type)
 
     def store(self):
         """Store the config in the storage."""
