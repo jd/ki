@@ -169,8 +169,7 @@ class Storage(Repo, dbus.service.Object):
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='ssi', out_signature='o')
     def AddRemote(self, name, url, weight):
-        if not self.remotes.has_key(name):
-            self.remotes[name] = Remote(self, name, url, weight)
+        self.remotes[name] = Remote(self, name, url, weight)
         return self.remotes[name].__dbus_object_path__
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
@@ -184,7 +183,7 @@ class Storage(Repo, dbus.service.Object):
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          out_signature='ao')
     def ListRemotes(self):
-        return [ r.__dbus_object_path__ for r in  self.remotes.itervalues() ]
+        return [ r.__dbus_object_path__ for r in  self.iterremotes() ]
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          out_signature='s')
