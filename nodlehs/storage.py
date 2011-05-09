@@ -322,3 +322,11 @@ class Box(threading.Thread, dbus.service.Object):
         if not self.is_alive():
             self.mountpoint = mountpoint
             self.start()
+
+    @dbus.service.method(dbus_interface="%s.Box" % BUS_INTERFACE,
+                         out_signature='a(su)')
+    def RecordList(self):
+        """Return an array of struct containing (sha, commit time)."""
+        return [ (commit.id(), commit.object.commit_time)
+                 for commit_set in self.record.commit_history_list()
+                 for commit in commit_set ]

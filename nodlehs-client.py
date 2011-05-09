@@ -24,7 +24,7 @@ import dbus
 import nodlehs.storage
 import argparse
 import tempfile
-
+import time
 
 def _edit_with_tempfile(s):
     tmpf = tempfile.mktemp()
@@ -50,6 +50,12 @@ def commit(box, **kwargs):
 def mount(box, mountpoint, **kwargs):
     box_path = storage.GetBox(box)
     bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).Mount(mountpoint)
+
+
+def recordlist(box, **kwargs):
+    box_path = storage.GetBox(box)
+    for (sha, commit_time) in bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).RecordList():
+        print "%s %s" % (sha, time.strftime("%a, %d %b %Y %H:%M:%S %z", time.localtime(commit_time)))
 
 
 def _config(obj, what):
@@ -115,6 +121,12 @@ parser_mount.add_argument('box', type=str,
 parser_mount.add_argument('mountpoint',
                           type=str,
                           help='The mountpoint.')
+# Mount
+parser_recordlist = subparsers.add_parser('recordlist',
+                                          help='Show the list of records of a box.')
+parser_recordlist.set_defaults(action=recordlist)
+parser_recordlist.add_argument('box', type=str,
+                               help='The box to show records list of.')
 # Commit
 parser_mount = subparsers.add_parser('commit', help='Commit the box immediately.')
 parser_mount.set_defaults(action=commit)
