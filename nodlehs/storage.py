@@ -232,8 +232,8 @@ class Box(threading.Thread, dbus.service.Object):
                 # Try to copy the current head
                 try:
                     self._next_record = Record(self.storage, self.storage[self.head])
-                # Store parent now, for comparison in commit()
-                    self._next_record.parents = [ self.head ]
+                    # Store parent now, for comparison in commit()
+                    self._next_record.parents = [ Record(self.storage, self.storage[self.head]) ]
                 except KeyError:
                     # Create a record based on brand new commit!
                     self._next_record = Record(self.storage, None)
@@ -270,7 +270,7 @@ class Box(threading.Thread, dbus.service.Object):
                 print new_root_id
                 if len(self._next_record.parents) == 0 \
                         or ((len(self._next_record.parents) > 1 \
-                                 or new_root_id != self.storage[self._next_record.parents[0]].tree) \
+                                 or new_root_id != self.storage[self._next_record.parents[0]].root.id()) \
                                 and new_root_id != self.storage[self.head].tree):
                     # We have a different root tree, so we are different. Hehe.
                     print " Next record root tree is different"
