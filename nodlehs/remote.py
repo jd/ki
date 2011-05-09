@@ -59,10 +59,7 @@ class Remote(dbus.service.Object, Configurable):
         return self.weight
 
     def fetch_sha1s(self, sha1s):
-        try:
-            self.fetch(lambda refs: sha1s)
-        except IOError:
-            raise FetchError(sha1s)
+        return self.fetch(lambda refs: sha1s)
 
     @property
     def config(self):
