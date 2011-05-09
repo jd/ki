@@ -24,14 +24,23 @@ import dbus.service
 
 BUS_INTERFACE = "org.naquadah.Nodlehs"
 
+
 class Config(File):
     """A configuration based on JSON."""
 
     ref = 'refs/tags/config'
 
+    # Default configuration
+    # XXX validate with JSON schema ?
+    # https://github.com/sunlightlabs/validictory
+    _default_config = { "boxes" : [] }
+
     def __init__(self, storage, on_store, obj=None):
         super(Config, self).__init__(storage, obj)
         self.on_store = on_store
+        if obj is None:
+            self._config = self._default_config
+            self._update(Config.__init__)
 
     def load_json(self, value):
         """Load JSON data."""
@@ -73,4 +82,3 @@ class Configurable(object):
                          in_signature='s')
     def SetConfig(self, conf):
         self.config.load_json(conf)
-

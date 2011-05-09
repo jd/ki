@@ -119,23 +119,23 @@ class Storage(Repo, dbus.service.Object, Configurable):
     def init_bare(cls, bus, path):
         return cls._init_maybe_bare(bus, path, True)
 
-    def _push_determine_wants(self, refs):
-        """Determine wants for a remote having refs.
-        Return a dict { ref: sha } used to update the remote when pushing."""
-        # Only push if the remote has already the branch
-        # Find common branches
-        common = set(refs.keys()) & set(self._boxes.keys())
-        # XXX If remote has prefetch, push the blob of
-        # refs[box_name]..self._boxes[box_name].head
-        # …if the push has been successful
-        # (would be stupid to push blobs is branch are totally different)
-        return dict([ (box_name, self._boxes[box_name].head) for box_name in common ])
-
     def push(self):
         """Push boxes and its blobs/tags to remotes."""
         for remote in self.iterremotes():
+            # XXX If remote has prefetch, push the blob of
+            # refs[box_name]..self._boxes[box_name].head
+            # …if the push has been successful
+            # (would be stupid to push blobs is branch are totally different)
+            def determine_wants(oldrefs):
+                """Determine wants for a remote having refs.
+                Return a dict { ref: sha } used to update the remote when pushing."""
+                try:
+                    wanted_boxes = set(self._boxes.keys()) & set(remote.config["boxes"].keys())
+                except KeyError:
+                    return {}
+                return dict([ (box_name, self._boxes[box_name].head) for box_name in wanted_boxes ])
             try:
-                remote.push(self.determine_wants)
+                remote.push(determine_wants)
             except UpdateRefsError:
                 # XXX We should probably fetch in such a case.
                 pass
