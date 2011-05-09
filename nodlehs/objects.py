@@ -86,6 +86,8 @@ def make_object(storage, sha):
         return File(storage, item)
     if isinstance(item, Tree):
         return Directory(storage, item)
+    if isinstance(item, Commit):
+        return Record(storage, item)
     raise UnknownObjectType(child)
 
 
