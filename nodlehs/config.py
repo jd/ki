@@ -41,6 +41,8 @@ class Config(File):
         if obj is None:
             self._config = self._default_config
             self._update(Config.__init__)
+        else:
+            self._config = json.load(self)
 
     def load_json(self, value):
         """Load JSON data."""
