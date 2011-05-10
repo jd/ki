@@ -119,7 +119,7 @@ class Directory(Storable):
             self._object.add(name, int(mode), i)
 
     def __iter__(self):
-        return self.object.__iter__()
+        return iter(self.object.iteritems())
 
     def _child_from_name(self, name):
         """Get a child of the directory by its name."""
