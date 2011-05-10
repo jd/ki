@@ -33,7 +33,7 @@ class Config(File):
     # Default configuration
     # XXX validate with JSON schema ?
     # https://github.com/sunlightlabs/validictory
-    _default_config = { "boxes" : [] }
+    _default_config = { "boxes" : {} }
 
     def __init__(self, storage, on_store, obj=None):
         super(Config, self).__init__(storage, obj)
