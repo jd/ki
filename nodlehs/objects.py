@@ -363,8 +363,8 @@ class File(Storable):
     def seek(self, offset):
         return self._data.seek(offset)
 
-    def read(self, value):
-        return self._data.read(value)
+    def read(self, n=-1):
+        return self._data.read(n)
 
     def write(self, data):
         self._data.write(data)
