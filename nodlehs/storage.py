@@ -167,12 +167,11 @@ class Storage(Repo, dbus.service.Object, Configurable):
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='s', out_signature='o')
     def GetBox(self, name):
-        keyname = "refs/heads/%s" % name
         try:
-            return self._boxes[keyname].__dbus_object_path__
+            return self._boxes[name].__dbus_object_path__
         except KeyError:
-            self._boxes[keyname] = Box(self, name)
-        return self._boxes[keyname].__dbus_object_path__
+            self._boxes[name] = Box(self, name)
+        return self._boxes[name].__dbus_object_path__
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='ssi', out_signature='o')
