@@ -26,8 +26,8 @@ import argparse
 import tempfile
 import time
 
-def _edit_with_tempfile(s):
-    tmpf = tempfile.mktemp()
+def _edit_with_tempfile(s, suffix=""):
+    tmpf = tempfile.mktemp() + suffix
     with file(tmpf, "w") as f:
         f.write(s)
     if os.system("%s %s" % (os.getenv("EDITOR"), tmpf)) == 0:
@@ -62,7 +62,7 @@ def _config(obj, what):
     if what == 'set':
         obj.SetConfig(sys.stdin.read())
     elif what == 'edit':
-        obj.SetConfig(_edit_with_tempfile(obj.GetConfig()))
+        obj.SetConfig(_edit_with_tempfile(obj.GetConfig(), ".js"))
     else:
         print obj.GetConfig()
 
