@@ -135,24 +135,31 @@ class Storage(Repo, dbus.service.Object, Configurable):
                     return {}
                 newrefs = {}
                 for box_name in wanted_boxes:
+                    branch_name = "refs/heads/%s" % box_name
                     head = self._boxes[box_name].head
                     # Update box to its current head
-                    newrefs[box_name] = head
+                    newrefs[branch_name] = head
                     # Check that box is configured for prefetch on the remote
                     try:
                         prefetch = remote.config["boxes"][box_name]["prefetch"]
                     except KeyError:
                         prefetch = False
                     if prefetch:
-                        head_record = Record(self, head)
-                        # Find the list of missing records between the remote and ourself
-                        missing_records = head_record.commit_intervals(Record(self, oldrefs["refs/heads/%s" % box_name]))
+                        head_record = Record(self, self[head])
+                        if oldrefs.has_key(branch_name):
+                            # Find the list of missing records between the remote and ourself
+                            missing_records = head_record.commit_intervals(Record(self, oldrefs[branch_name]))
+                        else:
+                            # The remote never had this branch, all records are missing
+                            missing_records = reduce(set.union, head_record.commit_history_list())
                         # Build the blob set list of all missing commits
                         blobs = set()
                         for record in missing_records:
                             blobs.update(record.root.list_blobs_recursive())
                         # Ask to send every blob of every missing commits
                         newrefs.update([ ("refs/tags/%s" % blob, blob) for blob in blobs ])
+                print "RETURNING NEWREFS"
+                print newrefs
                 return newrefs
 
             try:
