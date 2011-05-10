@@ -272,24 +272,15 @@ class Box(threading.Thread, dbus.service.Object):
         """Commit modification to the storage, if needed."""
         with self._next_record_lock:
             if self._next_record is not None:
-                # XXX We may need to lock _next_record
-                # and have a global object lock in Repo
-                new_root_id = self._next_record.root.id()
-                # Check that there's changes in the next record by comparing its
-                # root tree id against its parent's root tree id, or by checking
-                # if it's a merge record, or the first one. But anyhow, its new
-                # root must be different than head's current, otherwise we
-                # would have nothing to do and could drop that next record.
-                # if is_merge_commit \
-                #     or (first_commit \
-                #         or next_record_has_modification) \
-                #         and next_record_is_different_than_head)
+                # Check that there's changes in the next record by comparing
+                # its root tree id against its parent's root tree id. But
+                # anyhow, its new root must be different than head's
+                # current, otherwise we would have nothing to do and could
+                # drop that next record.
                 print "New root tree id: ",
-                print new_root_id
-                if len(self._next_record.parents) == 0 \
-                        or ((len(self._next_record.parents) > 1 \
-                                 or new_root_id != self.storage[self._next_record.parents[0]].root.id()) \
-                                and new_root_id != self.storage[self.head].tree):
+                print self._next_record.root.id()
+                if self._next_record.root not in [ parent.root for parent in self._next_record.parents ] \
+                        and self._next_record.root.id() != self.storage[self.head].tree:
                     # We have a different root tree, so we are different. Hehe.
                     print " Next record root tree is different"
                     try:
@@ -297,8 +288,8 @@ class Box(threading.Thread, dbus.service.Object):
                     except KeyError:
                         head = None
                     # if first_commit or fast_forward
-                    if (head is None and len(self._next_record.parents) == 0) \
-                            or (head is not None and head in self._next_record.parents):
+                    if head is None \
+                            or head in [ parent.id() for parent in self._next_record.parents ]:
                         # Current head is still one of our parents, so no
                         # problem updating head. This is a fast-forward.
                         print "  Doing a fast-forward"
