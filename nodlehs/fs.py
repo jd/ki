@@ -115,8 +115,8 @@ class NodlehsFuse(fuse.Operations):
         print fh
         print path
         print self._resolve(path, fh, Directory)[1]
-        for entry in self._resolve(path, fh, Directory)[1]:
-            yield entry
+        for path, mode, name in self._resolve(path, fh, Directory)[1]:
+            yield path
 
     def release(self, path, fh):
         del self.fds[fh]
