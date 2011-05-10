@@ -53,7 +53,7 @@ class TestObjects(unittest.TestCase):
         self.assert_(r3.commit_intervals(r1, False) is None)
 
     def test_Directory_mkdir(self):
-        directory = Directory(self.storage, Tree())
+        directory = Directory(self.storage)
         directory.mkdir("a/b/c")
         self.assert_(isinstance(directory["a"][1], Directory))
         self.assert_(isinstance(directory["a"][1]["b"][1], Directory))
