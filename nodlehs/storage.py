@@ -22,7 +22,7 @@ from .fuse import FUSE
 from .utils import *
 from .config import Configurable, Config, BUS_INTERFACE
 from .objects import Record
-from .remote import Remote
+from .remote import Remote, FetchError
 from .commiter import TimeCommiter
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
