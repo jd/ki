@@ -225,18 +225,16 @@ class Box(threading.Thread, dbus.service.Object):
     def record(self):
         """Return current record. Default is to return a copy of the current
         commit so it can be modified, or a new commit if no commit exist."""
-
         with self._next_record_lock:
             if self._next_record is None:
-                # Try to copy the current head
                 try:
+                    # Try to copy the current head
                     self._next_record = Record(self.storage, self.storage[self.head])
                     # Store parent now, for comparison in commit()
                     self._next_record.parents = [ Record(self.storage, self.storage[self.head]) ]
                 except KeyError:
-                    # Create a record based on brand new commit!
-                    self._next_record = Record(self.storage, None)
-
+                    # This can happen if self.head does not exists.
+                    self._next_record = Record(self.storage)
             return self._next_record
 
     @property
