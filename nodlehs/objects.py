@@ -78,6 +78,11 @@ class Storable(object):
     def __repr__(self):
         return "<" + self.__class__.__name__ + " " + hex(id(self)) + " for " + self.object.id + ">"
 
+    def __eq__(self, other):
+        if isinstance(other, Storable):
+            return self.id() == other.id()
+        raise TypeError("you can only compare Storable objects")
+
 
 def make_object(storage, sha):
     """Make a storage object from an sha."""
