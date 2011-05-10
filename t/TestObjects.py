@@ -52,6 +52,36 @@ class TestObjects(unittest.TestCase):
         self.assert_(r1.commit_intervals(r3) == [ set([ r2 ] )])
         self.assert_(r3.commit_intervals(r1, False) is None)
 
+    def test_Directory_list_blobs(self):
+        d = Directory(self.storage)
+        f1 = File(self.storage)
+        f1.data = "some data"
+        f2 = File(self.storage)
+        f2.data = "data"
+        f3 = File(self.storage)
+        f3.data = "did I write some data already"
+        d["arf/bla.txt"] = (644, f1)
+        d["arf/kikoo.txt"] = (644, f2)
+        d["arf/bla/bla.txt"] = (644, f3)
+        self.assert_(len(d.list_blobs()) == 0)
+        self.assert_(d["arf"][1].list_blobs() == set([ f1.id() ]))
+        self.assert_(d["arf/bla"][1].list_blobs() == set([ f3.id() ]))
+
+    def test_Directory_list_blobs_recursive(self):
+        d = Directory(self.storage)
+        f1 = File(self.storage)
+        f1.data = "some data"
+        f2 = File(self.storage)
+        f2.data = "data"
+        f3 = File(self.storage)
+        f3.data = "did I write some data already"
+        d["arf/bla.txt"] = (644, f1)
+        d["arf/kikoo.txt"] = (644, f2)
+        d["arf/toto.txt"] = (644, f3)
+        d["arf/bla/bla.txt"] = (644, f3)
+        d["arf/hep/file.txt"] = (644, f1)
+        self.assert_(d.list_blobs_recursive() == set([ f1.id(), f2.id(), f3.id() ]))
+
     def test_Directory_mkdir(self):
         directory = Directory(self.storage)
         directory.mkdir("a/b/c")

@@ -19,7 +19,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .utils import *
-from dulwich.objects import Blob, Commit, Tree, S_IFGITLINK
+from dulwich.objects import Blob, Commit, Tree, S_IFGITLINK, S_ISGITLINK
 import dulwich.diff_tree as diff_tree
 import stat
 import time
@@ -214,6 +214,21 @@ class Directory(Storable):
                 pass
 
         subdir.mtime = time.time()
+
+    def list_blobs(self):
+        """Return the list of blobs referenced by this Directory."""
+        return set([ sha for path, mode, sha in self if S_ISGITLINK(mode) ])
+
+    def list_blobs_recursive(self):
+        """Return the list of blobs referenced by this Directory and its
+        subdirectories."""
+        blobs = set()
+        for path, mode, hexsha in self:
+            if S_ISGITLINK(mode):
+                blobs.add(hexsha)
+            elif stat.S_ISDIR(mode):
+                blobs.update(self[path][1].list_blobs_recursive())
+        return blobs
 
     def rename(self, old, new):
         old = Path(old)
