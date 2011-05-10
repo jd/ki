@@ -133,7 +133,28 @@ class Storage(Repo, dbus.service.Object, Configurable):
                     wanted_boxes = set(self._boxes.keys()) & set(remote.config["boxes"].keys())
                 except KeyError:
                     return {}
-                return dict([ (box_name, self._boxes[box_name].head) for box_name in wanted_boxes ])
+                newrefs = {}
+                for box_name in wanted_boxes:
+                    head = self._boxes[box_name].head
+                    # Update box to its current head
+                    newrefs[box_name] = head
+                    # Check that box is configured for prefetch on the remote
+                    try:
+                        prefetch = remote.config["boxes"][box_name]["prefetch"]
+                    except KeyError:
+                        prefetch = False
+                    if prefetch:
+                        head_record = Record(self, head)
+                        # Find the list of missing records between the remote and ourself
+                        missing_records = head_record.commit_intervals(Record(self, oldrefs["refs/heads/%s" % box_name]))
+                        # Build the blob set list of all missing commits
+                        blobs = set()
+                        for record in missing_records:
+                            blobs.update(record.root.list_blobs_recursive())
+                        # Ask to send every blob of every missing commits
+                        newrefs.update([ ("refs/tags/%s" % blob, blob) for blob in blobs ])
+                return newrefs
+
             try:
                 remote.push(determine_wants)
             except UpdateRefsError:
