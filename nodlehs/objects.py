@@ -229,16 +229,6 @@ class Directory(Storable):
                 blobs.update(self[path].item.list_blobs_recursive())
         return blobs
 
-    def rename(self, old, new):
-        old = Path(old)
-        new = Path(new)
-
-        (old_directory_mode, old_directory) = self[old[:-1]]
-        (new_directory_mode, new_directory) = self[new[:-1]]
-        (item_mode, item) = old_directory[old[-1]]
-        del old_directory[old[-1]]
-        new_directory.add(new[-1], item_mode, item)
-
     def merge_tree_changes(self, changes):
         """Merge a tree into this directory."""
         for change in changes:
