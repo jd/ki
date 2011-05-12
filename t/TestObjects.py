@@ -52,6 +52,16 @@ class TestObjects(unittest.TestCase):
         self.assert_(r1.commit_intervals(r3) == [ set([ r2 ] )])
         self.assert_(r3.commit_intervals(r1, False) is None)
 
+    def test_Record_is_child_of(self):
+        r1 = Record(self.storage)
+        r2 = Record(self.storage)
+        r3 = Record(self.storage)
+        r1.parents = [ r2 ]
+        r2.parents = [ r3 ]
+        self.assert_(not r3.is_child_of(r1))
+        self.assert_(r1.is_child_of(r2))
+        self.assert_(r1.is_child_of(r3))
+
     def test_Directory_list_blobs(self):
         d = Directory(self.storage)
         f1 = File(self.storage)

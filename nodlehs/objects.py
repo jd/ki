@@ -439,11 +439,22 @@ class Record(Storable):
             self._object.author_time = \
                 self._object.commit_time = \
                 int(time.time())
+        if update_type == Storable.store:
             self._object.parents = [ parent.store() for parent in self.parents ]
             self._object.tree = self.root.store()
         else:
             self._object.parents = [ parent.id() for parent in self.parents ]
             self._object.tree = self.root.id()
+
+    def is_child_of(self, other):
+        """Check that this record is a child of another one."""
+        commits = OrderedSet([ set(self.parents) ])
+
+        for commit_set in commits:
+            for commit in commit_set:
+                if commit == other:
+                    return True
+                commits.add(set(commit.parents))
 
     def commit_intervals(self, other, rev=True):
         """Return the list of commits between two records.
