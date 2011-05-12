@@ -421,7 +421,8 @@ class Record(Storable):
 
     def _update(self, update_type):
         """Update commit information."""
-        if update_type == Storable.store:
+        if update_type == Storable.store \
+                or update_type == Record.__init__:
             # XXX this should not be set automatically on store. This should
             # be set explicitly by the code who is trying to commit.
             passwd = pwd.getpwuid(os.getuid())
