@@ -26,6 +26,7 @@ import time
 import socket
 import os
 import pwd
+import collections
 from .merge import *
 from StringIO import StringIO
 
@@ -103,6 +104,7 @@ def make_object(storage, sha):
 class UnknownChangeType(Exception):
     pass
 
+DirectoryEntry = collections.namedtuple('DirectoryEntry', ['mode', 'item'])
 
 class Directory(Storable):
     """A directory."""
@@ -130,21 +132,7 @@ class Directory(Storable):
     def __iter__(self):
         return iter(self.object.iteritems())
 
-    def _child_from_name(self, name):
-        """Get a child of the directory by its name."""
-        # First try to get the (mode, child) from the local tree
-        try:
-            return self.local_tree[name]
-        except KeyError:
-            try:
-                (mode, child_sha) = self.object[name]
-            except KeyError:
-                raise NoChild(name)
-            self.local_tree[name] = (mode, make_object(self.storage, child_sha))
-
-        return self.local_tree[name]
-
-    def child(self, path):
+    def __getitem__(self, path):
         """Get the child of that directory that is at path."""
         path = Path(path)
 
@@ -152,57 +140,35 @@ class Directory(Storable):
         # This happens if the absolute path asked is /
         # Yeah, that means we are the r00t directory, indeed.
         if len(path) == 0:
-            return (stat.S_IFDIR, self)
+            return DirectoryEntry(stat.S_IFDIR, self)
 
-        (mode, child) = self._child_from_name(path[0])
+        # Name of the local item that we should look for.
+        name = path[0]
 
+        # First try to get the entry from the local tree
+        try:
+            entry = self.local_tree[name]
+        except KeyError:
+            try:
+                (mode, child_sha) = self.object[name]
+            except KeyError:
+                raise NoChild(name)
+            self.local_tree[name] = DirectoryEntry(mode, make_object(self.storage, child_sha))
+
+        entry = self.local_tree[name]
+
+        # Last item of the path, return it.
         if len(path) == 1:
-            return (mode, child)
+            return entry
 
         if isinstance(child, Directory):
-            return child.child(path[1:])
+            return entry.item[path[1:]]
 
         raise NotDirectory(child)
 
     def __delitem__(self, path):
-        return self.remove(path)
-
-    def __getitem__(self, path):
-        return self.child(path)
-
-    def __setitem__(self, path, value):
-        # Value should be a tuple (mode, object)
-        return self.add(path, value[0], value[1])
-
-    def mkdir(self, path, directory=None):
-        """Create a directory name with dir_object being the Directory object.
-        If the directory at path already exists, do nothing.
-        Returns the directory."""
-
         path = Path(path)
-        subdir = self
-        while path:
-            curdir = path.pop(0)
-            try:
-                (mode, subdir) = subdir.child(curdir)
-            except NoChild:
-                subdir[curdir] = (stat.S_IFDIR, Directory(self.storage))
-                subdir = subdir[curdir][1]
-
-        return subdir
-
-    def add(self, path, mode, f):
-        """Add a file with name and mode attributes to directory."""
-
-        path = Path(path)
-        subdir = self.mkdir(path[:-1])
-        subdir.local_tree[path[-1]] = (mode, f)
-        subdir.mtime = time.time()
-
-    def remove(self, path):
-        """Remove a file with name from directory."""
-        path = Path(path)
-        subdir = self[path[:-1]][1]
+        subdir = self[path[:-1]].item
         name = path[-1]
         try:
             # Try to delete in the local tree
@@ -224,6 +190,30 @@ class Directory(Storable):
 
         subdir.mtime = time.time()
 
+    def __setitem__(self, path, value):
+        """Add a file with name and mode attributes to directory."""
+        path = Path(path)
+        subdir = self.mkdir(path[:-1])
+        subdir.local_tree[path[-1]] = (value[0], value[1])
+        subdir.mtime = time.time()
+
+    def mkdir(self, path, directory=None):
+        """Create a directory name with dir_object being the Directory object.
+        If the directory at path already exists, do nothing.
+        Returns the directory."""
+
+        path = Path(path)
+        subdir = self
+        while path:
+            curdir = path.pop(0)
+            try:
+                (mode, subdir) = subdir[curdir]
+            except NoChild:
+                subdir[curdir] = (stat.S_IFDIR, Directory(self.storage))
+                subdir = subdir[curdir].item
+
+        return subdir
+
     def list_blobs(self):
         """Return the list of blobs referenced by this Directory."""
         return set([ sha for path, mode, sha in self if S_ISGITLINK(mode) ])
@@ -236,17 +226,17 @@ class Directory(Storable):
             if S_ISGITLINK(mode):
                 blobs.add(hexsha)
             elif stat.S_ISDIR(mode):
-                blobs.update(self[path][1].list_blobs_recursive())
+                blobs.update(self[path].item.list_blobs_recursive())
         return blobs
 
     def rename(self, old, new):
         old = Path(old)
         new = Path(new)
 
-        (old_directory_mode, old_directory) = self.child(old[:-1])
-        (new_directory_mode, new_directory) = self.child(new[:-1])
-        (item_mode, item) = old_directory.child(old[-1])
-        old_directory.remove(old[-1])
+        (old_directory_mode, old_directory) = self[old[:-1]]
+        (new_directory_mode, new_directory) = self[new[:-1]]
+        (item_mode, item) = old_directory[old[-1]]
+        del old_directory[old[-1]]
         new_directory.add(new[-1], item_mode, item)
 
     def merge_tree_changes(self, changes):

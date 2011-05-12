@@ -111,11 +111,7 @@ class NodlehsFuse(fuse.Operations):
     def readdir(self, path, fh=None):
         yield '.'
         yield '..'
-        print self.fds
-        print fh
-        print path
-        print self._resolve(path, fh, Directory)[1]
-        for path, mode, name in self._resolve(path, fh, Directory)[1]:
+        for path, mode, name in self._resolve(path, fh, Directory).item:
             yield path
 
     def release(self, path, fh):
@@ -141,7 +137,7 @@ class NodlehsFuse(fuse.Operations):
         path = Path(path)
         (directory_mode, directory) = self._get_child(path[:-1], Directory)
         try:
-            directory.remove(path[-1])
+            del directory[path[-1]]
         except NoChild:
             raise fuse.FuseOSError(errno.ENOENT)
 
@@ -183,7 +179,7 @@ class NodlehsFuse(fuse.Operations):
     @rw
     def chmod(self, path, mode):
         try:
-            self.box.root[path] = (mode, self.box.root[path][1])
+            self.box.root[path] = (mode, self.box.root[path].item)
         except NotDirectory:
             raise fuse.FuseOSError(errno.ENOTDIR)
         except NoChild:
@@ -198,14 +194,14 @@ class NodlehsFuse(fuse.Operations):
         """Get the mode and child of path.
         Also check that child is instance of cls."""
         try:
-            (mode, child) = self.box.root[path]
+            entry = self.box.root[path]
         except NotDirectory:
             raise fuse.FuseOSError(errno.ENOTDIR)
         except NoChild:
             raise fuse.FuseOSError(errno.ENOENT)
-        if cls is not None and not isinstance(child, cls):
+        if cls is not None and not isinstance(entry.item, cls):
             raise fuse.FuseOSError(errno.EINVAL)
-        return (mode, child)
+        return entry
 
     def _resolve(self, path, fh=None, cls=None):
         """Resolve a file based on fh or path."""
@@ -226,16 +222,16 @@ class NodlehsFuse(fuse.Operations):
 
     @rw
     def truncate(self, path, length, fh=None):
-        return self._resolve(path, fh, File)[1].truncate(length)
+        return self._resolve(path, fh, File).item.truncate(length)
 
     @rw
     def symlink(self, target, source):
         target = Path(target)
         (target_directory_mode, target_directory) = self._get_child(target[:-1])
-        target_directory.add(target[-1], stat.S_IFLNK, Symlink(self.box.storage, target=source))
+        target_directory[target[-1]] = (stat.S_IFLNK, Symlink(self.box.storage, target=source))
 
     def readlink(self, path):
-        return str(self._get_child(path, Symlink)[1])
+        return str(self._get_child(path, Symlink).item)
 
     @rw
     def utimens(self, path, times=None):
