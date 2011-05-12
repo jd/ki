@@ -280,14 +280,11 @@ class Box(threading.Thread, dbus.service.Object):
         with self._next_record_lock:
             if self._next_record is not None:
                 # Check that there's changes in the next record by comparing
-                # its root tree id against its parent's root tree id. But
-                # anyhow, its new root must be different than head's
-                # current, otherwise we would have nothing to do and could
-                # drop that next record.
+                # its root tree id against head's one, otherwise we would
+                # have nothing to do and could drop that next record.
                 print "New root tree id: ",
                 print self._next_record.root.id()
-                if self._next_record.root not in [ parent.root for parent in self._next_record.parents ] \
-                        and self._next_record.root.id() != self.storage[self.head].tree:
+                if self._next_record.root.id() != self.storage[self.head].tree:
                     # We have a different root tree, so we are different. Hehe.
                     print " Next record root tree is different"
                     try:
