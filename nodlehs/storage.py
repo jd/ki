@@ -298,9 +298,9 @@ class Box(threading.Thread, dbus.service.Object):
                         self._next_record.merge_commit(head)
                     else:
                         print "  Doing a fast-forward"
-                    if not self.refs.set_if_equals("refs/heads/%s" % self.box_name,
-                                                   head,
-                                                   self._next_record.store()):
+                    if not self.storage.refs.set_if_equals("refs/heads/%s" % self.box_name,
+                                                           head,
+                                                           self._next_record.store()):
                         # head changed while we were doing our merge, so
                         # retry to commit once again, merging this new
                         # head.
