@@ -75,16 +75,20 @@ class Remote(dbus.service.Object, Configurable):
     def id(self):
         """Fetch remote id."""
         try:
-            return str(self.storage[self.refs[Remote._id_ref]])
-        except KeyError:
-            f = File(self.storage)
-            f.write(str(uuid.uuid4()))
-            def determine_wants(self, refs):
-                newrefs = refs.copy()
-                refs[Remote._id_refs] = f.store()
-                return f
-            self.push(determine_wants)
-            return str(f)
+            return self._id
+        except AttributeError:
+            try:
+                self._id = str(self.storage[self.refs[Remote._id_ref]])
+            except KeyError:
+                f = File(self.storage)
+                f.write(str(uuid.uuid4()))
+                def determine_wants(self, refs):
+                    newrefs = refs.copy()
+                    refs[Remote._id_refs] = f.store()
+                    return f
+                self.push(determine_wants)
+                self._id = str(f)
+        return self._id
 
     @property
     def config(self):
