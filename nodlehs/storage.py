@@ -41,9 +41,6 @@ def get_storage_manager(bus):
         _storage_manager = StorageManager(bus)
     return _storage_manager
 
-class NotEmptyDirectory(Exception):
-    pass
-
 class StorageManager(dbus.service.Object):
 
     def __init__(self, busname):

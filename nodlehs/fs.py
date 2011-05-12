@@ -27,7 +27,7 @@ import posix
 from decorator import decorator
 from dulwich.objects import S_ISGITLINK, S_IFGITLINK
 
-from .objects import NotDirectory, NoChild, Directory, File, Symlink
+from .objects import NotDirectory, NoChild, Directory, File, Symlink, DirectoryEntry
 from .utils import Path
 
 @decorator
@@ -102,7 +102,7 @@ class NodlehsFuse(fuse.Operations):
             fd = k[-1] + 1
         except IndexError:
             fd = 0
-        self.fds[fd] = (mode, item)
+        self.fds[fd] = DirectoryEntry(mode, item)
         return fd
 
     def opendir(self, path):
@@ -125,12 +125,12 @@ class NodlehsFuse(fuse.Operations):
         del self.fds[fh]
 
     def open(self, path, flags):
-        (mode, child) = self._get_child(path, File)
+        entry = self._get_child(path, File)
 
         if not self.box.is_writable and flags & (os.O_WRONLY | os.O_RDWR):
             raise fuse.FuseOSError(errno.EROFS)
 
-        return self.to_fd(mode, child)
+        return self.to_fd(*entry)
 
     @rw
     def unlink(self, path):
