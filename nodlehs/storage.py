@@ -130,6 +130,8 @@ class Storage(Repo, dbus.service.Object, Configurable):
                     wanted_boxes = set(self._boxes.keys()) & set(remote.config["boxes"].keys())
                 except KeyError:
                     return {}
+                print "Pushing, Wanted boxes"
+                print wanted_boxes
                 newrefs = {}
                 for box_name in wanted_boxes:
                     branch_name = "refs/heads/%s" % box_name
@@ -140,7 +142,7 @@ class Storage(Repo, dbus.service.Object, Configurable):
                     try:
                         prefetch = remote.config["boxes"][box_name]["prefetch"]
                     except KeyError:
-                        prefetch = False
+                        prefetch = True
                     if prefetch:
                         head_record = Record(self, self[head])
                         if oldrefs.has_key(branch_name):
