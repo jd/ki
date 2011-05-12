@@ -33,6 +33,16 @@ import dbus.service
 
 BUS_PATH = "/org/naquadah/Nodlehs"
 
+_storage_manager = None
+
+def get_storage_manager(bus):
+    global _storage_manager
+    if _storage_manager is None:
+        _storage_manager = StorageManager(bus)
+    return _storage_manager
+
+class NotEmptyDirectory(Exception):
+    pass
 
 class StorageManager(dbus.service.Object):
 
