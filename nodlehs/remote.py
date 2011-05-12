@@ -18,6 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import threading
 from .config import Configurable, Config, BUS_INTERFACE
 from dulwich.client import get_transport_and_path
 import dbus.service
@@ -96,9 +97,10 @@ class Remote(dbus.service.Object, Configurable):
         The function passed in determine_wants is called with the refs dict as first and only argument:
         { "refs/heads/master": "08a1c9f9742bcbd27c44fb84b662c68fabd995e1",
         … } """
-        self.client.send_pack(self.path,
-                              determine_wants,
-                              self.storage.object_store.generate_pack_contents)
+        threading.Thread(target=self.client.send_pack,
+                         name="Pusher for remote %s" % self.name,
+                         args=(determine_wants,
+                               self.storage.object_store.generate_pack_contents)).start()
 
     def __le__(self, other):
         if isinstance(other, Remote):
