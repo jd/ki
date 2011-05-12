@@ -94,7 +94,7 @@ class Storage(Repo, dbus.service.Object, Configurable):
     @property
     def id(self):
         try:
-            return str(self[self.refs[self._id_ref]])
+            return str(self[self.refs[Remote._id_ref]])
         except KeyError:
             f = File(self)
             f.write(str(uuid.uuid4()))
@@ -233,6 +233,11 @@ class Storage(Repo, dbus.service.Object, Configurable):
                          out_signature='s')
     def GetPath(self):
         return self.path
+
+    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
+                         out_signature='s')
+    def GetID(self):
+        return self.id
 
 
 class Box(threading.Thread, dbus.service.Object):
