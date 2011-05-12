@@ -153,12 +153,15 @@ class Storage(Repo, dbus.service.Object, Configurable):
                         else:
                             # The remote never had this branch, all records are missing
                             missing_records = reduce(set.union, head_record.commit_history_list())
-                        # Build the blob set list of all missing commits
-                        blobs = set()
-                        for record in missing_records:
-                            blobs.update(record.root.list_blobs_recursive())
-                        # Ask to send every blob of every missing commits
-                        newrefs.update([ ("refs/tags/%s" % blob, blob) for blob in blobs ])
+                        # If missing_records is None, nothing do push
+                        # This might also means the boxes got nothing in common!
+                        if missing_records:
+                            # Build the blob set list of all missing commits
+                            blobs = set()
+                            for record in missing_records:
+                                blobs.update(record.root.list_blobs_recursive())
+                            # Ask to send every blob of every missing commits
+                            newrefs.update([ ("refs/tags/%s" % blob, blob) for blob in blobs ])
                 print "RETURNING NEWREFS"
                 print newrefs
                 return newrefs
