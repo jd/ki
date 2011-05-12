@@ -284,34 +284,31 @@ class Box(threading.Thread, dbus.service.Object):
                 # have nothing to do and could drop that next record.
                 print "New root tree id: ",
                 print self._next_record.root.id()
-                if self._next_record.root.id() != self.storage[self.head].tree:
+                try:
+                    head = self.head
+                except KeyError:
+                    head = None
+                if head is None \
+                        or self._next_record.root.id() != self.storage[head].tree:
                     # We have a different root tree, so we are different. Hehe.
                     print " Next record root tree is different"
-                    try:
-                        head = self.head
-                    except KeyError:
-                        head = None
                     # if first_commit or fast_forward
-                    if head is None \
-                            or head in [ parent.id() for parent in self._next_record.parents ]:
-                        # Current head is still one of our parents, so no
-                        # problem updating head. This is a fast-forward.
-                        print "  Doing a fast-forward"
-                        self.head = self._next_record.store()
-                    else:
+                    if head not in [ parent.id() for parent in self._next_record.parents ]:
                         # Hum, current head is not our parent. It changed. We
                         # need to merge head in the next record to create a
                         # merge commit.
                         print "  Merging head into next record"
                         self._next_record.merge_commit(head)
-                        if not self.refs.set_if_equals("refs/heads/%s" % self.box_name,
-                                                       head,
-                                                       self._next_record.store()):
-                            # head changed while we were doing our merge, so
-                            # retry to commit once again, merging this new
-                            # head.
-                            print "  head changed, holy shit, recommit!"
-                            return self.Commit()
+                    else:
+                        print "  Doing a fast-forward"
+                    if not self.refs.set_if_equals("refs/heads/%s" % self.box_name,
+                                                   head,
+                                                   self._next_record.store()):
+                        # head changed while we were doing our merge, so
+                        # retry to commit once again, merging this new
+                        # head.
+                        print "  head changed, holy shit, recommit!"
+                        return self.Commit()
                 # If _next_record did not change (no root tree change), we just
                 # reset in case head would have changed under our feet while
                 # we were away.
