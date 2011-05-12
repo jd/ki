@@ -72,7 +72,10 @@ class Remote(dbus.service.Object, Configurable):
 
     def on_config_store(self, sha1):
         """Store the config on the remote."""
-        self.push(lambda oldrefs: { Config.ref: sha1 })
+        def determine_wants(oldrefs):
+            oldrefs[Config.ref] = sha1
+            return oldrefs
+        self.push(determine_wants)
 
     @property
     def refs(self):
