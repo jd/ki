@@ -121,10 +121,6 @@ class Storage(Repo, dbus.service.Object, Configurable):
     def push(self):
         """Push boxes and its blobs/tags to remotes."""
         for remote in self.iterremotes():
-            # XXX If remote has prefetch, push the blob of
-            # refs[box_name]..self._boxes[box_name].head
-            # …if the push has been successful
-            # (would be stupid to push blobs is branch are totally different)
             def determine_wants(oldrefs):
                 """Determine wants for a remote having refs.
                 Return a dict { ref: sha } used to update the remote when pushing."""
@@ -146,20 +142,18 @@ class Storage(Repo, dbus.service.Object, Configurable):
                     except KeyError:
                         prefetch = True
                     if prefetch:
-                        head_record = Record(self, self[head])
+                        head_record = Record(self, head)
                         if oldrefs.has_key(branch_name):
                             # Find the list of missing records between the remote and ourself
                             missing_records = head_record.commit_intervals(Record(self, oldrefs[branch_name]))
                         else:
                             # The remote never had this branch, all records are missing
                             missing_records = reduce(set.union, head_record.commit_history_list())
-                        # If missing_records is None, nothing do push
+                        # If missing_records is None, nothing to push
                         # This might also means the boxes got nothing in common!
                         if missing_records:
                             # Build the blob set list of all missing commits
-                            blobs = set()
-                            for record in missing_records:
-                                blobs.update(record.root.list_blobs_recursive())
+                            blobs = reduce(set.union, [ set(blob_list) for blob_list in record.root.list_blobs_recursive() ])
                             # Ask to send every blob of every missing commits
                             newrefs.update([ ("refs/tags/%s" % blob, blob) for blob in blobs ])
                 print "RETURNING NEWREFS"
