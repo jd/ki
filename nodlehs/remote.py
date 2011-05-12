@@ -20,8 +20,10 @@
 
 import threading
 from .config import Configurable, Config, BUS_INTERFACE
+from .objects import File
 from dulwich.client import get_transport_and_path
 import dbus.service
+import uuid
 
 
 class FetchError(Exception):
@@ -29,6 +31,8 @@ class FetchError(Exception):
 
 
 class Remote(dbus.service.Object, Configurable):
+
+    _id_ref = "refs/tags/id"
 
     def __init__(self, storage, name, url, weight=100):
         self.url = url
@@ -59,8 +63,28 @@ class Remote(dbus.service.Object, Configurable):
     def GetWeight(self):
         return self.weight
 
+    @dbus.service.method(dbus_interface="%s.Remote" % BUS_INTERFACE,
+                         out_signature='s')
+    def GetID(self):
+        return self.id
+
     def fetch_sha1s(self, sha1s):
         return self.fetch(lambda refs: sha1s)
+
+    @property
+    def id(self):
+        """Fetch remote id."""
+        try:
+            return str(self.storage[self.refs[Remote._id_ref]])
+        except KeyError:
+            f = File(self.storage)
+            f.write(str(uuid.uuid4()))
+            def determine_wants(self, refs):
+                newrefs = refs.copy()
+                refs[Remote._id_refs] = f.store()
+                return f
+            self.push(determine_wants)
+            return str(f)
 
     @property
     def config(self):

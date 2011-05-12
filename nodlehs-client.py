@@ -82,6 +82,7 @@ def remote_list(**kwargs):
     for item in storage.ListRemotes():
         r = bus.get_object(nodlehs.storage.BUS_INTERFACE, item)
         print "%s:" % r.GetName()
+        print "    ID: %s" % r.GetID()
         print "    URL: %s" % r.GetURL()
         print "    Weight: %d" % r.GetWeight()
 

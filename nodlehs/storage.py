@@ -79,8 +79,6 @@ class StorageManager(dbus.service.Object):
 class Storage(Repo, dbus.service.Object, Configurable):
     """Storage based on a repository."""
 
-    _id_ref = "refs/tags/id"
-
     def __init__(self, bus, path):
         self.bus = bus
         self.remotes = {}
@@ -100,7 +98,7 @@ class Storage(Repo, dbus.service.Object, Configurable):
         except KeyError:
             f = File(self)
             f.write(str(uuid.uuid4()))
-            self.refs[self._id_ref] = f.store()
+            self.refs[Remote._id_ref] = f.store()
             return str(f)
 
     @property
