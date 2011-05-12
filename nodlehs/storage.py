@@ -266,11 +266,6 @@ class Box(threading.Thread, dbus.service.Object):
     def head(self):
         return self.storage.refs["refs/heads/%s" % self.box_name]
 
-    @head.setter
-    def head(self, value):
-        self.storage.refs['refs/heads/%s' % self.box_name] = value
-        self.Commited()
-
     @dbus.service.method(dbus_interface="%s.Box" % BUS_INTERFACE)
     def Commit(self):
         """Commit modification to the storage, if needed."""
@@ -306,6 +301,8 @@ class Box(threading.Thread, dbus.service.Object):
                         # head.
                         print "  head changed, holy shit, recommit!"
                         return self.Commit()
+                    else:
+                        self.Commited()
                 # If _next_record did not change (no root tree change), we just
                 # reset in case head would have changed under our feet while
                 # we were away.
