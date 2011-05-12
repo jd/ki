@@ -82,10 +82,10 @@ class Remote(dbus.service.Object, Configurable):
             except KeyError:
                 f = File(self.storage)
                 f.write(str(uuid.uuid4()))
-                def determine_wants(self, refs):
+                def determine_wants(refs):
                     newrefs = refs.copy()
-                    refs[Remote._id_refs] = f.store()
-                    return f
+                    refs[Remote._id_ref] = f.store()
+                    return refs
                 self.push(determine_wants)
                 self._id = str(f)
         return self._id
