@@ -163,7 +163,7 @@ class Directory(Storable):
         if len(path) == 1:
             return entry
 
-        if isinstance(child, Directory):
+        if isinstance(entry.item, Directory):
             return entry.item[path[1:]]
 
         raise NotDirectory(child)
