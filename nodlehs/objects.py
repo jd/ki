@@ -47,8 +47,12 @@ class NotDirectory(Exception):
 class Storable(object):
 
     def __init__(self, storage, obj=None):
+        """Initialize an storable object."""
         self.storage = storage
-        self._object = obj
+        if isinstance(obj, str):
+            self._object = storage[obj]
+        else:
+            self._object = obj
 
     @property
     def object(self):
