@@ -134,7 +134,7 @@ class Storage(Repo, dbus.service.Object, Configurable):
                     return {}
                 print "Pushing, Wanted boxes"
                 print wanted_boxes
-                newrefs = {}
+                newrefs = oldrefs.copy()
                 for box_name in wanted_boxes:
                     branch_name = "refs/heads/%s" % box_name
                     head = self._boxes[box_name].head
