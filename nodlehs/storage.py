@@ -21,12 +21,13 @@
 from .fuse import FUSE
 from .utils import *
 from .config import Configurable, Config, BUS_INTERFACE
-from .objects import Record
+from .objects import Record, File
 from .remote import Remote, FetchError, Syncer
 from .commiter import TimeCommiter
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
 import os
+import uuid
 import xdg.BaseDirectory
 import threading
 import dbus.service
@@ -78,6 +79,8 @@ class StorageManager(dbus.service.Object):
 class Storage(Repo, dbus.service.Object, Configurable):
     """Storage based on a repository."""
 
+    _id_ref = "refs/tags/id"
+
     def __init__(self, bus, path):
         self.bus = bus
         self.remotes = {}
@@ -89,6 +92,16 @@ class Storage(Repo, dbus.service.Object, Configurable):
                                                    dbus_clean_name(os.path.splitext(os.path.basename(path))[0]),
                                                    dbus_uuid()))
         Syncer(self)
+
+    @property
+    def id(self):
+        try:
+            return str(self[self.refs[self._id_ref]])
+        except KeyError:
+            f = File(self)
+            f.write(str(uuid.uuid4()))
+            self.refs[self._id_ref] = f.store()
+            return str(f)
 
     @property
     def config(self):
