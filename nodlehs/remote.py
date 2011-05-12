@@ -116,7 +116,7 @@ class Remote(dbus.service.Object, Configurable):
     def FetchProgress(self, status):
         pass
 
-    def fetch(self, determine_wants):
+    def fetch(self, determine_wants=None):
         """Fetch data from the remote.
         The function passed in determine_wats is called with the refs dict as first and only argument:
         { "refs/heads/master": "08a1c9f9742bcbd27c44fb84b662c68fabd995e1",
