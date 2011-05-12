@@ -73,8 +73,9 @@ class Remote(dbus.service.Object, Configurable):
     def on_config_store(self, sha1):
         """Store the config on the remote."""
         def determine_wants(oldrefs):
-            oldrefs[Config.ref] = sha1
-            return oldrefs
+            newrefs = oldrefs.copy()
+            newrefs[Config.ref] = sha1
+            return newrefs
         self.push(determine_wants)
 
     @property
