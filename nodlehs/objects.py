@@ -194,7 +194,7 @@ class Directory(Storable):
         """Add a file with name and mode attributes to directory."""
         path = Path(path)
         subdir = self.mkdir(path[:-1])
-        subdir.local_tree[path[-1]] = (value[0], value[1])
+        subdir.local_tree[path[-1]] = DirectoryEntry(value[0], value[1])
         subdir.mtime = time.time()
 
     def mkdir(self, path, directory=None):
