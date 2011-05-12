@@ -80,8 +80,8 @@ class Remote(dbus.service.Object, Configurable):
         return self.fetch(lambda refs: [])
 
     @dbus.service.signal(dbus_interface="%s.Remote" % BUS_INTERFACE,
-                         signature='ass')
-    def FetchProgress(self, sha1, status):
+                         signature='as')
+    def FetchProgress(self, status):
         pass
 
     def fetch(self, determine_wants):
