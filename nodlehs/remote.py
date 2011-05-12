@@ -97,10 +97,9 @@ class Remote(dbus.service.Object, Configurable):
         The function passed in determine_wants is called with the refs dict as first and only argument:
         { "refs/heads/master": "08a1c9f9742bcbd27c44fb84b662c68fabd995e1",
         … } """
-        threading.Thread(target=self.client.send_pack,
-                         name="Pusher for remote %s" % self.name,
-                         args=(determine_wants,
-                               self.storage.object_store.generate_pack_contents)).start()
+        return self.client.send_pack(self.path,
+                                     determine_wants,
+                                     self.storage.object_store.generate_pack_contents)
 
     def __le__(self, other):
         if isinstance(other, Remote):
@@ -122,3 +121,27 @@ class Remote(dbus.service.Object, Configurable):
             return self.weight > other.weight
         return self.weight > other
 
+
+class Syncer(threading.Thread):
+
+    def __init__(self, storage):
+        self.storage = storage
+        super(Syncer, self).__init__()
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        while True:
+            # XXX configure timeout
+            print "WAIT"
+            self.storage.must_be_sync.wait(30)
+            print "END WAIT"
+            if self.storage.must_be_sync.is_set():
+                print "IS SET -> PUSH"
+                self.storage.push()
+                self.storage.must_be_sync.clear()
+            else:
+                print "NO SET"
+                # Timeout
+                # XXX fetch
+                pass

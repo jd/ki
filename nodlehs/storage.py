@@ -22,7 +22,7 @@ from .fuse import FUSE
 from .utils import *
 from .config import Configurable, Config, BUS_INTERFACE
 from .objects import Record
-from .remote import Remote, FetchError
+from .remote import Remote, FetchError, Syncer
 from .commiter import TimeCommiter
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
@@ -82,11 +82,13 @@ class Storage(Repo, dbus.service.Object, Configurable):
         self.bus = bus
         self.remotes = {}
         self._boxes = {}
+        self.must_be_sync = threading.Event()
         Repo.__init__(self, path)
         dbus.service.Object.__init__(self, bus,
                                      "%s/%s_%s" % (BUS_PATH,
                                                    dbus_clean_name(os.path.splitext(os.path.basename(path))[0]),
                                                    dbus_uuid()))
+        Syncer(self)
 
     @property
     def config(self):
@@ -314,7 +316,7 @@ class Box(threading.Thread, dbus.service.Object):
 
     @dbus.service.signal(dbus_interface="%s.Box" % BUS_INTERFACE)
     def Commited(self):
-        self.storage.push()
+        self.storage.must_be_sync.set()
 
     def run(self):
         from .fs import NodlehsFuse

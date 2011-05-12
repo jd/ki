@@ -418,6 +418,8 @@ class Record(Storable):
             need_update = True
             self.root = Directory(storage)
         else:
+            if isinstance(commit, str):
+                commit = storage[commit]
             self.root = Directory(storage, storage[commit.tree])
             need_update = False
         super(Record, self).__init__(storage, commit)
