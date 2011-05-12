@@ -101,6 +101,9 @@ def remote_showrefs(name, **kwargs):
 def remote_config(what, name, **kwargs):
     _config(_remote_name_to_obj(name), what)
 
+def info(**kwargs):
+    print "Path: %s" % storage.GetPath()
+    print "ID: %s" % storage.GetID()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--storage', type=str,
@@ -109,6 +112,9 @@ subparsers = parser.add_subparsers(help='Action to perform.',
                                    title="Actions",
                                    description="Actions to perform on the given box.")
 
+# Info
+parser_info = subparsers.add_parser('info', help='Show storage information.')
+parser_info.set_defaults(action=info)
 # Config
 parser_config = subparsers.add_parser('config', help='Dump or set storage configuration.')
 parser_config.set_defaults(action=config)
