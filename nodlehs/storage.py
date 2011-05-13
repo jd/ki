@@ -26,6 +26,7 @@ from .remote import Remote, FetchError, Syncer
 from .commiter import TimeCommiter
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
+from dulwich.objects import Commit
 import os
 import uuid
 import xdg.BaseDirectory
@@ -63,9 +64,10 @@ class StorageManager(dbus.service.Object):
                          in_signature='s', out_signature='o')
     def GetStorage(self, path):
         """Create a storage."""
-        if not self.storages.has_key(repo):
-            self.storages[repo] = self.create_storage(path)
-        return self.storages[repo].__dbus_object_path__
+        path = os.path.abspath(path)
+        if not self.storages.has_key(path):
+            self.storages[path] = self.create_storage(path)
+        return self.storages[path].__dbus_object_path__
 
     @dbus.service.method(dbus_interface="%s.StorageManager" % BUS_INTERFACE,
                          out_signature='o')
@@ -129,53 +131,73 @@ class Storage(Repo, dbus.service.Object, Configurable):
     def init_bare(cls, bus, path):
         return cls._init_maybe_bare(bus, path, True)
 
+    @staticmethod
+    def _fetch_determine_refs(refs):
+        """Determine what should be fetched based on refs.
+        This return the list of refs matching boxes and remotes."""
+        return dict([ (ref, sha) for ref, sha in refs.iteritems()
+                      if ref.startswith("refs/heads/") or ref.startswith("refs/remotes/") ])
+
     def push(self):
-        """Push boxes and its blobs/tags to remotes."""
+        """Push all boxes to all remotes."""
         for remote in self.iterremotes():
             def determine_wants(oldrefs):
                 """Determine wants for a remote having refs.
                 Return a dict { ref: sha } used to update the remote when pushing."""
-                try:
-                    wanted_boxes = set(self._boxes.keys()) & set(remote.config["boxes"].keys())
-                except KeyError:
-                    return {}
-                print "Pushing, Wanted boxes"
-                print wanted_boxes
                 newrefs = oldrefs.copy()
-                for box_name in wanted_boxes:
-                    branch_name = "refs/heads/%s" % box_name
-                    head = self._boxes[box_name].head
-                    # Update box to its current head
-                    newrefs[branch_name] = head
-                    # Check that box is configured for prefetch on the remote
-                    try:
-                        prefetch = remote.config["boxes"][box_name]["prefetch"]
-                    except KeyError:
-                        prefetch = True
-                    if prefetch:
-                        head_record = Record(self, head)
-                        if oldrefs.has_key(branch_name):
-                            # Find the list of missing records between the remote and ourself
-                            missing_records = head_record.commit_intervals(Record(self, oldrefs[branch_name]))
-                        else:
-                            # The remote never had this branch, all records are missing
-                            missing_records = reduce(set.union, head_record.commit_history_list())
-                        # If missing_records is None, nothing to push
-                        # This might also means the boxes got nothing in common!
-                        if missing_records:
-                            # Build the blob set list of all missing commits
-                            blobs = reduce(set.union, [ set(blob_list) for blob_list in record.root.list_blobs_recursive() ])
-                            # Ask to send every blob of every missing commits
-                            newrefs.update([ ("refs/tags/%s" % blob, blob) for blob in blobs ])
-                print "RETURNING NEWREFS"
-                print newrefs
+                for branch_name, head in self.refs.as_dict("refs/remotes").iteritems():
+                    newrefs["refs/remotes/%s" % branch_name] = head
+                for branch_name, head in self.refs.as_dict("refs/heads").iteritems():
+                    newrefs["refs/remotes/%s/%s" % (self.id, branch_name)] = head
                 return newrefs
-
             try:
                 remote.push(determine_wants)
             except UpdateRefsError:
-                # XXX We should probably fetch in such a case.
                 pass
+
+
+                #     # Check that box is configured for prefetch on the remote
+                #     try:
+                #         prefetch = remote.config["boxes"][box_name]["prefetch"]
+                #     except KeyError:
+                #         prefetch = True
+                #     if prefetch:
+                #         head_record = Record(self, head)
+                #         if oldrefs.has_key(branch_name):
+                #             # Find the list of missing records between the remote and ourself
+                #             missing_records = head_record.commit_intervals(Record(self, oldrefs[branch_name]))
+                #         else:
+                #             # The remote never had this branch, all records are missing
+                #             missing_records = reduce(set.union, head_record.commit_history_list())
+                #         # If missing_records is None, nothing to push
+                #         # This might also means the boxes got nothing in common!
+                #         if missing_records:
+                #             # Build the blob set list of all missing commits
+                #             blobs = reduce(set.union, [ set(blob_list) for blob_list in record.root.list_blobs_recursive() ])
+                #             # Ask to send every blob of every missing commits
+                #             newrefs.update([ ("refs/tags/%s" % blob, blob) for blob in blobs ])
+                # print "RETURNING NEWREFS"
+                # print newrefs
+                # return newrefs
+
+    def fetch(self):
+        """Fetch all boxes from all remotes."""
+        for remote in self.iterremotes():
+            refs = self._fetch_determine_refs(remote.fetch(lambda refs: self._fetch_determine_refs(refs).values()))
+            for ref, sha in refs.iteritems():
+                # Store refs["refs/heads/remotes/REMOTE/BOX"] = sha
+                self.refs[ref.replace("/heads/", "/remotes/%s/" % remote.id, 1)] = sha
+
+    def merge(self):
+        for remote in self.iterremotes():
+            for name, sha in self.refs.as_dict("refs/remotes/%s" % remote.id).iteritems():
+                box = self.get_box(name)
+                try:
+                    print "%s: trying to set" % self.path
+                    print "%s head = %s" % (name, sha)
+                    box.head = sha
+                except NotFastForward:
+                    print "Error NotFastForward"
 
     def __getitem__(self, key):
         try:
@@ -201,14 +223,17 @@ class Storage(Repo, dbus.service.Object, Configurable):
         # We were unable to fetch
         raise FetchError
 
+    def get_box(self, name):
+        try:
+            return self._boxes[name]
+        except KeyError:
+            self._boxes[name] = Box(self, name)
+        return self._boxes[name]
+
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='s', out_signature='o')
     def GetBox(self, name):
-        try:
-            return self._boxes[name].__dbus_object_path__
-        except KeyError:
-            self._boxes[name] = Box(self, name)
-        return self._boxes[name].__dbus_object_path__
+        return self.get_box(name).__dbus_object_path__
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='ssi', out_signature='o')
@@ -240,10 +265,14 @@ class Storage(Repo, dbus.service.Object, Configurable):
         return self.id
 
 
+class NotFastForward(Exception):
+    pass
+
+
 class Box(threading.Thread, dbus.service.Object):
 
     def __init__(self, storage, name):
-        self._next_record_lock = threading.Lock()
+        self.head_lock = threading.Lock()
         self.config = {}
         self.storage = storage
         self.box_name = name
@@ -267,7 +296,7 @@ class Box(threading.Thread, dbus.service.Object):
     def record(self):
         """Return current record. Default is to return a copy of the current
         commit so it can be modified, or a new commit if no commit exist."""
-        with self._next_record_lock:
+        with self.head_lock:
             if self._next_record is None:
                 try:
                     # Try to copy the current head
@@ -283,10 +312,30 @@ class Box(threading.Thread, dbus.service.Object):
     def head(self):
         return self.storage.refs["refs/heads/%s" % self.box_name]
 
+    @head.setter
+    def head(self, value):
+        if isinstance(value, str):
+            value = self.storage[value]
+        if isinstance(value, Commit):
+            value = Record(self.storage, value)
+        with self.head_lock:
+            # If the new head value is a children of current head, update
+            try:
+                head = self.head
+            except KeyError:
+                # This branch has not commit yet
+                head = None
+            if head == value:
+                pass
+            elif head is None or value.is_child_of(self.head):
+                self.storage.refs["refs/heads/%s" % self.box_name] = value.id()
+            else:
+                raise NotFastForward
+
     @dbus.service.method(dbus_interface="%s.Box" % BUS_INTERFACE)
     def Commit(self):
         """Commit modification to the storage, if needed."""
-        with self._next_record_lock:
+        with self.head_lock:
             if self._next_record is not None:
                 # Check that there's changes in the next record by comparing
                 # its root tree id against head's one, otherwise we would
@@ -301,8 +350,7 @@ class Box(threading.Thread, dbus.service.Object):
                         or self._next_record.root.id() != self.storage[head].tree:
                     # We have a different root tree, so we are different. Hehe.
                     print " Next record root tree is different"
-                    # if first_commit or fast_forward
-                    if head not in [ parent.id() for parent in self._next_record.parents ]:
+                    if head is not None and head not in [ parent.id() for parent in self._next_record.parents ]:
                         # Hum, current head is not our parent. It changed. We
                         # need to merge head in the next record to create a
                         # merge commit.
@@ -310,6 +358,7 @@ class Box(threading.Thread, dbus.service.Object):
                         self._next_record.merge_commit(head)
                     else:
                         print "  Doing a fast-forward"
+                    self._next_record.update_timestamp()
                     if not self.storage.refs.set_if_equals("refs/heads/%s" % self.box_name,
                                                            head,
                                                            self._next_record.store()):

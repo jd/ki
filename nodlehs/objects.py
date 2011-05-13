@@ -417,28 +417,27 @@ class Record(Storable):
         super(Record, self).__init__(storage, commit)
         self.parents = OrderedSet([ Record(storage, storage[parent]) for parent in self._object.parents ])
         if need_update:
-            self._update(Record.__init__)
-
-    def _update(self, update_type):
-        """Update commit information."""
-        if update_type == Storable.store \
-                or update_type == Record.__init__:
-            # XXX this should not be set automatically on store. This should
-            # be set explicitly by the code who is trying to commit.
             passwd = pwd.getpwuid(os.getuid())
             self._object.author = "%s <%s@%s>" % (passwd.pw_gecos.split(",")[0],
                                                   passwd.pw_name,
                                                   socket.getfqdn())
             self._object.committer = "Nodlehs"
             self._object.message = "Nodlehs auto-commit"
-            self._object.author_timezone = \
+            self.update_timestamp()
+            self._update(Record.__init__)
+
+    def update_timestamp(self):
+        # XXX maybe checking for root tree items mtime would be better and
+        # more accurate?
+        self._object.author_time = \
+            self._object.commit_time = \
+            int(time.time())
+        self._object.author_timezone = \
             self._object.commit_timezone = \
             - time.timezone
-            # XXX maybe checking for root tree items mtime would be better and
-            # more accurate?
-            self._object.author_time = \
-                self._object.commit_time = \
-                int(time.time())
+
+    def _update(self, update_type):
+        """Update commit information."""
         if update_type == Storable.store:
             self._object.parents = [ parent.store() for parent in self.parents ]
             self._object.tree = self.root.store()

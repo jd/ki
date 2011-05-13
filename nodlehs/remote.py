@@ -160,20 +160,20 @@ class Syncer(threading.Thread):
         self.storage = storage
         super(Syncer, self).__init__()
         self.daemon = True
+        self.name = "Syncer for %s" % self.storage.path
         self.start()
 
     def run(self):
         while True:
             # XXX configure timeout
             print "WAIT"
-            self.storage.must_be_sync.wait(30)
+            self.storage.must_be_sync.wait(5)
+            self.storage.must_be_sync.clear()
             print "END WAIT"
-            if self.storage.must_be_sync.is_set():
-                print "IS SET -> PUSH"
-                self.storage.push()
-                self.storage.must_be_sync.clear()
-            else:
-                print "NO SET"
-                # Timeout
-                # XXX fetch
-                pass
+            print "PUSH"
+            self.storage.push()
+            print "FETCH"
+            self.storage.fetch()
+            print "MERGE"
+            self.storage.merge()
+
