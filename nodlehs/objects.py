@@ -88,7 +88,7 @@ class Storable(object):
             return self.id() == other.id()
         if isinstance(other, str) and len(other) == 40:
             return self.id() == other
-        raise TypeError("you can only compare a Storable object with a Storable object or an SHA")
+        return False
 
 
 def make_object(storage, sha):
