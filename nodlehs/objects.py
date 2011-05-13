@@ -415,7 +415,7 @@ class Record(Storable):
             self.root = Directory(storage, storage[commit.tree])
             need_update = False
         super(Record, self).__init__(storage, commit)
-        self.parents = OrderedSet([ Record(storage, storage[parent]) for parent in self._object.parents ])
+        self._parents = OrderedSet([ Record(storage, storage[parent]) for parent in self._object.parents ])
         if need_update:
             passwd = pwd.getpwuid(os.getuid())
             self._object.author = "%s <%s@%s>" % (passwd.pw_gecos.split(",")[0],
@@ -425,6 +425,10 @@ class Record(Storable):
             self._object.message = "Nodlehs auto-commit"
             self.update_timestamp()
             self._update(Record.__init__)
+
+    @property
+    def parents(self):
+        return self._parents
 
     def update_timestamp(self):
         # XXX maybe checking for root tree items mtime would be better and

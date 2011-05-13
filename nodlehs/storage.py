@@ -302,7 +302,8 @@ class Box(threading.Thread, dbus.service.Object):
                     # Try to copy the current head
                     self._next_record = Record(self.storage, self.storage[self.head])
                     # Store parent now, for comparison in commit()
-                    self._next_record.parents = [ Record(self.storage, self.storage[self.head]) ]
+                    self._next_record.parents.clear()
+                    self._next_record.parents.append(self.head)
                 except KeyError:
                     # This can happen if self.head does not exists.
                     self._next_record = Record(self.storage)

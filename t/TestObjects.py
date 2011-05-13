@@ -55,8 +55,8 @@ class TestObjects(unittest.TestCase):
         r1 = Record(self.storage)
         r2 = Record(self.storage)
         r3 = Record(self.storage)
-        r1.parents = [ r2 ]
-        r2.parents = [ r3 ]
+        r1.parents.append(r2)
+        r2.parents.append(r3)
         self.assert_(r3.commit_intervals(r1) == [ set([ r2 ]) ])
         self.assert_(r2.commit_intervals(r1) == [])
         self.assert_(r1.commit_intervals(r3) == [ set([ r2 ] )])
@@ -66,8 +66,8 @@ class TestObjects(unittest.TestCase):
         r1 = Record(self.storage)
         r2 = Record(self.storage)
         r3 = Record(self.storage)
-        r1.parents = [ r2 ]
-        r2.parents = [ r3 ]
+        r1.parents.append(r2)
+        r2.parents.append(r3)
         self.assert_(not r3.is_child_of(r1))
         self.assert_(r1.is_child_of(r2))
         self.assert_(r1.is_child_of(r3))
