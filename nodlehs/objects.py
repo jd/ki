@@ -519,8 +519,9 @@ class Record(Storable):
 
         for commit2_set in commits2:
             for commit1_set in commits1:
-                if commit2_set.issubset(commit1_set):
-                    return commit2_set
+                common = commit1_set & commit2_set
+                if common:
+                    return common
             for commit in commit2_set:
                 commits2.add(set(commit.parents))
 
