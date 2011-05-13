@@ -421,7 +421,7 @@ class Record(Storable):
             self._object.author = "%s <%s@%s>" % (passwd.pw_gecos.split(",")[0],
                                                   passwd.pw_name,
                                                   socket.getfqdn())
-            self._object.committer = "Nodlehs"
+            self._object.committer = "Nodlehs <nodlehs@naquadah.org>"
             self._object.message = "Nodlehs auto-commit"
             self.update_timestamp()
             self._update(Record.__init__)
