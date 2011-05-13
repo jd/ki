@@ -110,6 +110,9 @@ class OrderedSet(list):
     def discard(self, item):
         return self.remove(item)
 
+    def clear(self):
+        del self[:]
+
 
 class SingletonType(type):
     """Singleton metaclass."""

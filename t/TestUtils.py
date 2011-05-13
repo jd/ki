@@ -75,6 +75,8 @@ class TestUtils(unittest.TestCase):
         s.update(OrderedSet([1, 3, 8]))
         self.assert_(s[5] is 8)
         self.assert_(s == [ 1, 3, 4, 5, 'hi', 8 ])
+        s.clear()
+        self.assert_(s == [])
 
 if __name__ == '__main__':
     unittest.main()
