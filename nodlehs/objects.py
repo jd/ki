@@ -560,3 +560,18 @@ class Record(Storable):
             self.root.merge_tree_changes(changes)
             self.parents.append(other)
 
+    # These operators works like that:
+    # r1 > r2 is True if r1 is a parent of r2.
+    # It's easy: look at the the > like an arrow in the DAG.
+
+    def __lt__(self, other):
+        return not self.is_child_of(other)
+
+    def __gt__(self, other):
+        return self.is_child_of(other)
+
+    def __ge__(self, other):
+        return self == other or self.is_child_of(other)
+
+    def __le__(self, other):
+        return self == other or not self.is_child_of(other)

@@ -72,6 +72,18 @@ class TestObjects(unittest.TestCase):
         self.assert_(r1.is_child_of(r2))
         self.assert_(r1.is_child_of(r3))
 
+    def test_Record_operators(self):
+        r1 = Record(self.storage)
+        r2 = Record(self.storage)
+        r3 = Record(self.storage)
+        r1.parents.append(r2)
+        r2.parents.append(r3)
+        self.assert_(r1 > r2)
+        self.assert_(r1 <= r1)
+        self.assert_(r3 < r1)
+        self.assert_(r3 >= r3)
+        self.assert_(r3 < r2)
+
     def test_Directory_list_blobs(self):
         d = Directory(self.storage)
         f1 = File(self.storage)
