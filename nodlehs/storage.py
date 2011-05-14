@@ -236,6 +236,16 @@ class Storage(Repo, dbus.service.Object, Configurable):
         return self.get_box(name).__dbus_object_path__
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
+                         out_signature='as')
+    def ListBoxes(self):
+        return self.refs.as_dict("refs/heads").keys()
+
+    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
+                         out_signature='as')
+    def ListRemoteBoxes(self):
+        return set([ ref.split('/', 1)[1] for ref in self.refs.as_dict("refs/remotes").keys() ])
+
+    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='ssi', out_signature='o')
     def AddRemote(self, name, url, weight):
         self.remotes[name] = Remote(self, name, url, weight)

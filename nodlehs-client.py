@@ -101,9 +101,19 @@ def remote_showrefs(name, **kwargs):
 def remote_config(what, name, **kwargs):
     _config(_remote_name_to_obj(name), what)
 
+
 def info(**kwargs):
     print "Path: %s" % storage.GetPath()
     print "ID: %s" % storage.GetID()
+
+
+def box(r, **kwargs):
+    if r:
+        for box in storage.ListRemoteBoxes():
+            print box
+    else:
+        for box in storage.ListBoxes():
+            print box
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--storage', type=str,
@@ -128,12 +138,18 @@ parser_mount.add_argument('box', type=str,
 parser_mount.add_argument('mountpoint',
                           type=str,
                           help='The mountpoint.')
-# Mount
+# Recordlist
 parser_recordlist = subparsers.add_parser('recordlist',
                                           help='Show the list of records of a box.')
 parser_recordlist.set_defaults(action=recordlist)
 parser_recordlist.add_argument('box', type=str,
                                help='The box to show records list of.')
+# Box
+parser_box = subparsers.add_parser('box',
+                                       help='Show the list of boxes.')
+parser_box.set_defaults(action=box)
+parser_box.add_argument('-r', action='store_true',
+                        help='Show the list of remote boxes.')
 # Commit
 parser_mount = subparsers.add_parser('commit', help='Commit the box immediately.')
 parser_mount.set_defaults(action=commit)
