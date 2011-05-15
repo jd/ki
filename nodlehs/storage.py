@@ -224,12 +224,21 @@ class Storage(Repo, dbus.service.Object, Configurable):
         # We were unable to fetch
         raise FetchError
 
-    def get_box(self, name):
+    def get_box(self, name, create=False):
         try:
             return self._boxes[name]
         except KeyError:
-            self._boxes[name] = Box(self, name)
+            if name in self.refs.subkeys("refs/heads") or create:
+                self._boxes[name] = Box(self, name)
+            else:
+                raise KeyError("No such box.")
         return self._boxes[name]
+
+    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
+                         in_signature='s', out_signature='o')
+    def CreateBox(self, name):
+        # XXX validate name based on git tech spec
+        return self.get_box("%s-%s" % (name, uuid.uuid4()), True).__dbus_object_path__
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='s', out_signature='o')
