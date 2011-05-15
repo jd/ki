@@ -152,8 +152,9 @@ class Storage(Repo, dbus.service.Object, Configurable):
                 return newrefs
             try:
                 remote.push(determine_wants)
-            except UpdateRefsError:
-                pass
+            except UpdateRefsError as e:
+                print "> Update ref error"
+                print e.ref_status
 
 
                 #     # Check that box is configured for prefetch on the remote
