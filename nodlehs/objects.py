@@ -531,38 +531,40 @@ class Record(Storable):
 
     def merge_commit(self, other):
         """Merge another commit into ourselves."""
-        # XXX Maybe add some other barrier to be sure we are not merging one
-        # of our parents, which would be utterly stupid.
-        if other not in self.parents:
-            # Update self before sending it to the LCA function
-            common_ancestors = self.find_common_ancestors(self.update(),
-                                                          self.storage[other])
-            if len(common_ancestors) == 1:
-                common_ancestor = common_ancestors.pop()
-            else:
-                # Criss-cross merge :( We merge the ancestors, and use that as a
-                # base. This should be equivalent to what Git does in its
-                # recursive merge method, if this code is correct, which shall
-                # be proved.
-                common_ancestor_r = Record(self.storage, self.storage[common_ancestors.pop()])
-                for ancestor in common_ancestors:
-                    common_ancestor_r.merge_commit(ancestor)
-                common_ancestor = common_ancestor_r.store()
+        if not isinstance(other, Record):
+            other = Record(self.storage, other)
 
-            print "    Looking for changes between:"
-            print common_ancestor
-            print other
-            changes = diff_tree.RenameDetector(self.storage.object_store,
-                                               self.storage[common_ancestor].tree,
-                                               self.storage[other].tree).changes_with_renames()
-            print "    Changes:"
-            print changes
-            self.root.merge_tree_changes(changes)
-            self.parents.append(other)
+        common_ancestors = self.find_common_ancestors(other)
 
-    # These operators works like that:
-    # r1 > r2 is True if r1 is a parent of r2.
-    # It's easy: look at the the > like an arrow in the DAG.
+        if not common_ancestors:
+            raise ValueError("Trying to merge a commit with no common ancestor")
+
+        if len(common_ancestors) == 1:
+            common_ancestor = common_ancestors.pop()
+        else:
+            # Criss-cross merge :( We merge the ancestors, and use that as a
+            # base. This should be equivalent to what Git does in its
+            # recursive merge method, if this code is correct, which shall
+            # be proved.
+            common_ancestor_r = Record(self.storage, common_ancestors.pop())
+            for ancestor in common_ancestors:
+                common_ancestor_r.merge_commit(ancestor)
+            common_ancestor = common_ancestor_r.store()
+
+        print "    Looking for changes between:"
+        print common_ancestor
+        print other
+        changes = diff_tree.RenameDetector(self.storage.object_store,
+                                           self.storage[common_ancestor].tree,
+                                           self.storage[other].tree).changes_with_renames()
+        print "    Changes:"
+        print changes
+        self.root.merge_tree_changes(changes)
+        self.parents.append(other)
+
+    # These operators works like that: r1 > r2 is True if r2 is a parent of
+    # r1. It's easy: look at the the > like an arrow in the DAG toward the
+    # root, or think about creation time (the more recent is the biggest).
 
     def __lt__(self, other):
         return not self.is_child_of(other)

@@ -190,15 +190,8 @@ class Storage(Repo, dbus.service.Object, Configurable):
                 self.refs[ref.replace("/heads/", "/remotes/%s/" % remote.id, 1)] = sha
 
     def merge(self):
-        for remote in self.iterremotes():
-            for name, sha in self.refs.as_dict("refs/remotes/%s" % remote.id).iteritems():
-                box = self.get_box(name)
-                try:
-                    print "%s: trying to set" % self.path
-                    print "%s head = %s" % (name, sha)
-                    box.head = sha
-                except NotFastForward:
-                    print "Error NotFastForward"
+        for box in self._boxes.itervalues():
+            box.merge()
 
     def __getitem__(self, key):
         try:
@@ -289,10 +282,19 @@ class NotFastForward(Exception):
     pass
 
 
+class NoPlutoniumInDeLoreanError(Exception):
+    """You cannot go back in time."""
+    pass
+
+
+class NoRecord(Exception):
+    pass
+
+
 class Box(threading.Thread, dbus.service.Object):
 
     def __init__(self, storage, name):
-        self.head_lock = threading.Lock()
+        self.head_lock = threading.RLock()
         self.config = {}
         self.storage = storage
         self.box_name = name
@@ -302,6 +304,7 @@ class Box(threading.Thread, dbus.service.Object):
                                      "%s/%s" % (storage.__dbus_object_path__, name))
         threading.Thread.__init__(self, name="Box %s on Storage %s" % (name, storage.path))
         self.daemon = True
+        self.merge()
 
     @property
     def root(self):
@@ -312,6 +315,27 @@ class Box(threading.Thread, dbus.service.Object):
     def is_writable(self):
         return True
 
+    def more_recent_record_on_remotes(self):
+        """Return the more recent commit for a box on mirrored remotes."""
+        try:
+            return max([ Record(self.storage, sha) \
+                             for box, sha in self.storage.refs.as_dict("refs/remotes").iteritems() \
+                             if box.split('/', 1)[1] == self.box_name ])
+        except ValueError:
+            raise NoRecord
+
+    def merge(self):
+        try:
+            print "merge"
+            print self
+            self.head = self.more_recent_record_on_remotes()
+        except NoRecord:
+            print " > Remotes got no record"
+        except NoPlutoniumInDeLoreanError:
+            print " > Denied: not going back in time doc"
+        except NotFastForward:
+            print " > Denied: UNRELATED ?!"
+
     @property
     def record(self):
         """Return current record. Default is to return a copy of the current
@@ -320,18 +344,21 @@ class Box(threading.Thread, dbus.service.Object):
             if self._next_record is None:
                 try:
                     # Try to copy the current head
-                    self._next_record = Record(self.storage, self.storage[self.head])
+                    self._next_record = self.head
                     # Store parent now, for comparison in commit()
                     self._next_record.parents.clear()
                     self._next_record.parents.append(self.head)
-                except KeyError:
+                except NoRecord:
                     # This can happen if self.head does not exists.
                     self._next_record = Record(self.storage)
             return self._next_record
 
     @property
     def head(self):
-        return self.storage.refs["refs/heads/%s" % self.box_name]
+        try:
+            return Record(self.storage, self.storage.refs["refs/heads/%s" % self.box_name])
+        except KeyError:
+            raise NoRecord
 
     @head.setter
     def head(self, value):
@@ -343,14 +370,31 @@ class Box(threading.Thread, dbus.service.Object):
             # If the new head value is a children of current head, update
             try:
                 head = self.head
-            except KeyError:
+            except NoRecord:
                 # This branch has not commit yet
                 head = None
+            # Nothing to do (the easy case)
             if head == value:
                 pass
-            elif head is None or value.is_child_of(self.head):
-                self.storage.refs["refs/heads/%s" % self.box_name] = value.id()
+            # No commit ever, so accept the new commit
+            elif head is None:
+                self.storage.refs["refs/heads/%s" % self.box_name] = value.store()
+            elif value.is_child_of(head):
+                # If it's a child, it's ok
+                self.storage.refs["refs/heads/%s" % self.box_name] = value.store()
+            elif head.is_child_of(value):
+                # Trying to go back in time?
+                raise NoPlutoniumInDeLoreanError
+            elif head.find_common_ancestors(value):
+                # They got common ancestors, so they are from the same repo at least.
+                # We can merge them.
+                head.parents.clear()
+                head.parents.append(self.head)
+                head.merge_commit(value)
+                self.storage.refs["refs/heads/%s" % self.box_name] = head.store()
             else:
+                # This is only raised if they got not common ancestor, so
+                # they are totally unrelated. This is abnormal.
                 raise NotFastForward
 
     @dbus.service.method(dbus_interface="%s.Box" % BUS_INTERFACE)
@@ -358,20 +402,26 @@ class Box(threading.Thread, dbus.service.Object):
         """Commit modification to the storage, if needed."""
         with self.head_lock:
             if self._next_record is not None:
-                # Check that there's changes in the next record by comparing
-                # its root tree id against head's one, otherwise we would
-                # have nothing to do and could drop that next record.
                 print "New root tree id: ",
                 print self._next_record.root.id()
                 try:
                     head = self.head
-                except KeyError:
+                except NoRecord:
                     head = None
+                # Check that there's changes in that next record by
+                # comparing its root tree id against head's one and its
+                # parents one. If it's not different that these ones,
+                # committing is useless.
+                #
+                # if no_commit ever \
+                #         or (commit's tree is different than current head's one \
+                #                 and different than its parents ones)
                 if head is None \
-                        or self._next_record.root.id() != self.storage[head].tree:
+                        or (self._next_record.root != head.root \
+                                and self._next_record.root not in [ p.root for p in self._next_record.parents ]):
                     # We have a different root tree, so we are different. Hehe.
                     print " Next record root tree is different"
-                    if head is not None and head not in [ parent.id() for parent in self._next_record.parents ]:
+                    if head is not None and head not in self._next_record.parents:
                         # Hum, current head is not our parent. It changed. We
                         # need to merge head in the next record to create a
                         # merge commit.
@@ -381,7 +431,7 @@ class Box(threading.Thread, dbus.service.Object):
                         print "  Doing a fast-forward"
                     self._next_record.update_timestamp()
                     if not self.storage.refs.set_if_equals("refs/heads/%s" % self.box_name,
-                                                           head,
+                                                           head and head.id(),
                                                            self._next_record.store()):
                         # head changed while we were doing our merge, so
                         # retry to commit once again, merging this new
