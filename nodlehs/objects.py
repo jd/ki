@@ -523,7 +523,15 @@ class Record(Storable):
 
         for commit2_set in commits2:
             for commit1_set in commits1:
-                common = commit1_set & commit2_set
+                # XXX This is what we'd like to write:
+                # common = commit1_set & commit2_set
+                # This does not work because set() use `is'
+                # operator and not `==' to compare items.
+                common = set()
+                for commit1 in commit1_set:
+                    for commit2 in commit2_set:
+                        if commit1 == commit2:
+                            common.add(commit1)
                 if common:
                     return common
             for commit in commit2_set:

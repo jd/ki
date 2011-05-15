@@ -50,6 +50,9 @@ class TestObjects(unittest.TestCase):
         self.assert_(r5.find_common_ancestors(r6) == set([ r2 ]))
         self.assert_(r2.find_common_ancestors(r6) == set([ r1 ]))
         self.assert_(r6.find_common_ancestors(r2) == set([ r1 ]))
+        r6copy = Record(self.storage, r6.store())
+        self.assert_(r6copy.find_common_ancestors(r5) == set([ r2 ]))
+
 
     def test_Record_intervals(self):
         r1 = Record(self.storage)
