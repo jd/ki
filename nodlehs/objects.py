@@ -337,8 +337,8 @@ class File(Storable):
     def __init__(self, storage, obj=None):
         if obj is None:
             obj = Blob()
-        self._data = StringIO(obj.data)
         super(File, self).__init__(storage, obj)
+        self._data = StringIO(self._object.data)
 
     def __len__(self):
         return len(self._data.getvalue())
