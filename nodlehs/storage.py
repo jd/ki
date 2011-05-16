@@ -215,7 +215,7 @@ class Storage(Repo, dbus.service.Object, Configurable):
             except FetchError:
                 pass
         # We were unable to fetch
-        raise FetchError
+        raise FetchError(sha1)
 
     def get_box(self, name, create=False):
         try:
