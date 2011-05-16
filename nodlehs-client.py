@@ -42,16 +42,6 @@ def _edit_with_tempfile(s, suffix=""):
     return s
 
 
-def commit(box, **kwargs):
-    box_path = storage.GetBox(box)
-    bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).Commit()
-
-
-def mount(box, mountpoint, **kwargs):
-    box_path = storage.GetBox(box)
-    bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).Mount(mountpoint)
-
-
 def recordlist(box, **kwargs):
     box_path = storage.GetBox(box)
     for (sha, commit_time) in bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).RecordList():
@@ -65,6 +55,7 @@ def _config(obj, what):
         obj.SetConfig(_edit_with_tempfile(obj.GetConfig(), ".js"))
     else:
         print obj.GetConfig()
+
 
 def config(what, **kwargs):
     _config(storage, what)
@@ -103,17 +94,32 @@ def remote_config(what, name, **kwargs):
 
 
 def info(**kwargs):
-    print "Path: %s" % storage.GetPath()
-    print "ID: %s" % storage.GetID()
+    print (u"Path: %s" % storage.GetPath()).encode('utf-8')
+    print (u"ID: %s" % storage.GetID()).encode('utf-8')
 
 
-def box(r, **kwargs):
-    if r:
+def box_create(name, **kwargs):
+    box_path = storage.CreateBox(name)
+
+
+def box_commit(name, **kwargs):
+    box_path = storage.GetBox(name)
+    bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).Commit()
+
+
+def box_list(include_remotes, **kwargs):
+    if include_remotes:
         for box in storage.ListRemoteBoxes():
             print box
     else:
         for box in storage.ListBoxes():
             print box
+
+
+def box_mount(name, mountpoint, **kwargs):
+    box_path = storage.GetBox(name)
+    bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).Mount(mountpoint)
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--storage', type=str,
@@ -130,31 +136,36 @@ parser_config = subparsers.add_parser('config', help='Dump or set storage config
 parser_config.set_defaults(action=config)
 parser_config.add_argument('what', type=str, choices=['dump', 'set', 'edit'],
                            help='The action to perform.')
-# Mount
-parser_mount = subparsers.add_parser('mount', help='Mount the box.')
-parser_mount.set_defaults(action=mount)
-parser_mount.add_argument('box', type=str,
-                          help='The box to mount.')
-parser_mount.add_argument('mountpoint',
-                          type=str,
-                          help='The mountpoint.')
+
 # Recordlist
 parser_recordlist = subparsers.add_parser('recordlist',
                                           help='Show the list of records of a box.')
 parser_recordlist.set_defaults(action=recordlist)
 parser_recordlist.add_argument('box', type=str,
                                help='The box to show records list of.')
+
 # Box
-parser_box = subparsers.add_parser('box',
-                                       help='Show the list of boxes.')
-parser_box.set_defaults(action=box)
-parser_box.add_argument('-r', action='store_true',
-                        help='Show the list of remote boxes.')
-# Commit
-parser_mount = subparsers.add_parser('commit', help='Commit the box immediately.')
-parser_mount.set_defaults(action=commit)
-parser_mount.add_argument('box', type=str,
-                          help='The box to commit.')
+parser_box = subparsers.add_parser('box', help='Manage boxes.')
+subparsers_box = parser_box.add_subparsers(help='Action to perform on boxes.',
+                                           title='Actions',
+                                           description='Action to perform on a given box.')
+# box create
+parser_box_create = subparsers_box.add_parser('create', help='Create a box.')
+parser_box_create.set_defaults(action=box_create)
+parser_box_create.add_argument('name', type=str, help='The name of the box to create.')
+# box commit
+parser_box_commit = subparsers_box.add_parser('commit', help='Commit a box immediately.')
+parser_box_commit.set_defaults(action=box_commit)
+parser_box_commit.add_argument('name', type=str, help='The name of the box to commit.')
+# box list
+parser_box_list = subparsers_box.add_parser('list', help='List existing boxes.')
+parser_box_list.set_defaults(action=box_list)
+parser_box_list.add_argument('-r', '--include-remotes', action='store_true', help='Show remote boxes too.')
+# box mount
+parser_box_mount = subparsers_box.add_parser('mount', help='Mount a box.')
+parser_box_mount.set_defaults(action=box_mount)
+parser_box_mount.add_argument('name', type=str, help='The name of the box to mount.')
+parser_box_mount.add_argument('mountpoint', type=str, help='The directory to mount the box into.')
 
 # Remotes
 parser_remote = subparsers.add_parser('remote', help='Act on remotes.')
