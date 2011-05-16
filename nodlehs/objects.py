@@ -91,15 +91,14 @@ class Storable(object):
         return False
 
 
-def make_object(storage, sha):
+def make_object(storage, mode, sha):
     """Make a storage object from an sha."""
-    item = storage[sha]
-    if isinstance(item, Blob):
-        return File(storage, item)
-    if isinstance(item, Tree):
-        return Directory(storage, item)
-    if isinstance(item, Commit):
-        return Record(storage, item)
+    if mode & S_IFGITLINK:
+        return File(storage, sha)
+    elif mode & stat.S_IFDIR:
+        return Directory(storage, sha)
+    elif mode & stat.S_IFLNK:
+        return Symlink(storage, sha)
     raise UnknownObjectType(child)
 
 
@@ -155,7 +154,8 @@ class Directory(Storable):
                 (mode, child_sha) = self.object[name]
             except KeyError:
                 raise NoChild(name)
-            self.local_tree[name] = DirectoryEntry(mode, make_object(self.storage, child_sha))
+            try:
+                self.local_tree[name] = DirectoryEntry(mode, make_object(self.storage, mode, child_sha))
 
         entry = self.local_tree[name]
 
@@ -254,12 +254,16 @@ class Directory(Storable):
                 try:
                     mode, child = self[change.old.path]
                 except NoChild, NotDirectory:
-                    self[change.new.path] = (change.new.mode, make_object(self.storage, change.new.sha))
+                    self[change.new.path] = (change.new.mode, make_object(self.storage,
+                                                                          change.new.mode,
+                                                                          change.new.sha))
                 else:
                     # Only handle change operation if nothing has been
                     # changed in the mean time in our tree.
                     if change.old.sha == child.id:
-                        self[change.new.path] = (change.new.mode, make_object(self.storage, change.new.sha))
+                        self[change.new.path] = (change.new.mode, make_object(self.storage,
+                                                                              change.new.mode,
+                                                                              change.new.sha))
                     else:
                         # Both have changed, try to merge
                         try:
@@ -269,9 +273,11 @@ class Directory(Storable):
                             # Store both files
                             self["%s.%s" % (change.old.path, change.old.sha)] = (change.old.mode,
                                                                                  make_object(self.storage,
+                                                                                             change.old.mode,
                                                                                              change.old.sha))
                             self["%s.%s" % (change.new.path, change.new.sha)] = (change.new.mode,
                                                                                  make_object(self.storage,
+                                                                                             change.old.mode,
                                                                                              change.new.sha))
                             # Store merged content in child
                             child.truncate(0)
@@ -280,9 +286,11 @@ class Directory(Storable):
                             # Store both files
                             self["%s.%s" % (change.old.path, change.old.sha)] = (change.old.mode,
                                                                                  make_object(self.storage,
+                                                                                             change.old.mode,
                                                                                              change.old.sha))
                             self["%s.%s" % (change.new.path, change.new.sha)] = (change.new.mode,
                                                                                  make_object(self.storage,
+                                                                                             change.new.mode,
                                                                                              change.new.sha))
             elif change.type == diff_tree.CHANGE_UNCHANGED:
                 pass
@@ -292,7 +300,7 @@ class Directory(Storable):
                     mode, child = self[change.new.path]
                 except NoChild:
                     # We do not have the move target, so let's add the file.
-                    self[change.new.path] = (change.new.mode, make_object(self.storage, change.new.sha))
+                    self[change.new.path] = (change.new.mode, make_object(self.storage, change.new.mode, change.new.sha))
                 except NotDirectory:
                     # XXX We cannot add this file here, so we need to add it somewhere else. Figure it out.
                     raise NotImplementedError
@@ -301,14 +309,18 @@ class Directory(Storable):
                         # Conflict! The file already exists but is different.
                         # Yeah, this is ugly, but for now…
                         self["%s.%d" % (change.new.path, change.new.sha)] = (change.new.mode,
-                                                                             make_object(self.storage, change.new.sha))
+                                                                             make_object(self.storage,
+                                                                                         change.new.mode,
+                                                                                         change.new.sha))
             elif change.type == diff_tree.CHANGE_RENAME:
                 try:
                     mode, child = self[change.new.path]
                 except NoChild, NotDirectory:
                     # We do not have the move target, so let's add the file.
                     try:
-                        self[change.new.path] = (change.new.mode, make_object(self.storage, change.new.sha))
+                        self[change.new.path] = (change.new.mode, make_object(self.storage,
+                                                                              change.new.mode,
+                                                                              change.new.sha))
                     except NotDirectory:
                         # XXX Cannot add the file here, figure out what to do
                         raise NotImplementedError
@@ -317,7 +329,9 @@ class Directory(Storable):
                         # Conflict! The file already exists but is different.
                         # Yeah, this is ugly, but for now…
                         self["%s.%d" % (change.new.path, change.new.sha)] = (change.new.mode,
-                                                                             make_object(self.storage, change.new.sha))
+                                                                             make_object(self.storage,
+                                                                                         change.new.mode,
+                                                                                         change.new.sha))
                 try:
                     mode, child = self[change.old.path]
                 except NoChild, NotDirectory:
