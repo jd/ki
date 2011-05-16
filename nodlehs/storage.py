@@ -231,7 +231,7 @@ class Storage(Repo, dbus.service.Object, Configurable):
                          in_signature='s', out_signature='o')
     def CreateBox(self, name):
         # XXX validate name based on git tech spec
-        return self.get_box("%s-%s" % (name, uuid.uuid4()), True).__dbus_object_path__
+        return self.get_box("%s_%s" % (name, dbus_uuid()), True).__dbus_object_path__
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='s', out_signature='o')
