@@ -127,7 +127,7 @@ class Directory(Storable):
         for name, (mode, child) in self.local_tree.iteritems():
             # We store file with the GITLINK property. This is an hack to be
             # sure git will send us the whole blob when we fetch the tree.
-            if isinstance(child, File):
+            if type(child) == File:
                 mode |= S_IFGITLINK
             if update_type == Storable.store:
                 i = child.store()
@@ -155,12 +155,23 @@ class Directory(Storable):
         try:
             entry = self.local_tree[name]
         except KeyError:
+            # Otherwise try to fetch from local Tree object
             try:
                 (mode, child_sha) = self.object[name]
             except KeyError:
                 raise NoChild(name)
+            # Check permission right now, this avoids to call make_object
+            # and fetch a file object uselessly just in order to raise
+            # later.
+            if not stat.S_ISDIR(mode) and len(path) > 1:
+                raise NotDirectory(child)
             try:
                 self.local_tree[name] = DirectoryEntry(mode, make_object(self.storage, mode, child_sha))
+            except FetchError as e:
+                # Store the mode since this is the only thing we can get,
+                # and re-raise the exception.
+                e.mode = mode
+                raise e
 
         entry = self.local_tree[name]
 

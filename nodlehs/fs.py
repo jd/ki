@@ -27,7 +27,7 @@ import posix
 from decorator import decorator
 from dulwich.objects import S_ISGITLINK, S_IFGITLINK
 
-from .objects import NotDirectory, NoChild, Directory, File, Symlink, DirectoryEntry
+from .objects import NotDirectory, NoChild, Directory, File, Symlink, DirectoryEntry, FetchError
 from .utils import Path
 
 @decorator
@@ -48,7 +48,10 @@ class NodlehsFuse(fuse.Operations):
         super(NodlehsFuse, self).__init__()
 
     def access(self, path, amode):
-        (mode, child) = self._get_child(path)
+        try:
+            (mode, child) = self._get_child(path)
+        except FetchError as e:
+            mode = e.mode
 
         if amode & posix.W_OK and not self.box.is_writable:
             raise fuse.FuseOSError(errno.EACCES)
@@ -57,8 +60,25 @@ class NodlehsFuse(fuse.Operations):
                 raise fuse.FuseOSError(errno.EACCES)
 
     def getattr(self, path, fh=None):
-        (mode, child) = self._resolve(path, fh)
         s = {}
+        # Special case: for the root directory, there's no object at all, so
+        # we return the start time as the ctime
+        if path == '/':
+            s['st_ctime'] = self.start_time
+        else:
+            # XXX accessing object is not that good.
+            s['st_ctime'] = self.box.record.object.commit_time
+        try:
+            (mode, child) = self._resolve(path, fh)
+        except FetchError as e:
+            s['st_size'] = 0
+            mode = e.mode
+        else:
+            s['st_size'] = len(child)
+            try:
+                s['st_mtime'] = child.mtime
+            except AttributeError:
+                s['st_mtime']= s['st_ctime']
         if S_ISGITLINK(mode):
             # Transform gitlinks to files
             mode &= ~S_IFGITLINK
@@ -77,18 +97,6 @@ class NodlehsFuse(fuse.Operations):
         s['st_nlink'] = 1
         s['st_uid'] = os.getuid()
         s['st_gid'] = os.getgid()
-        s['st_size'] = len(child)
-        # Special case: for the root directory, there's no object at all, so
-        # we return the start time as the ctime
-        if path == '/':
-            s['st_ctime'] = self.start_time
-        else:
-            # XXX accessing object is not that good.
-            s['st_ctime'] = self.box.record.object.commit_time
-        try:
-            s['st_mtime'] = child.mtime
-        except AttributeError:
-            s['st_mtime']= s['st_ctime']
         # TODO: store atime internally?
         s['st_atime'] = 0
         return s
@@ -106,7 +114,13 @@ class NodlehsFuse(fuse.Operations):
         return fd
 
     def opendir(self, path):
-        return self.to_fd(*self._get_child(path, Directory))
+        try:
+            entry = self._get_child(path)
+        except FetchError:
+            raise fuse.FuseOSError(errno.EIO)
+        if not isinstance(entry.item, Directory):
+            raise fuse.FuseOSError(errno.ENOTDIR)
+        return self.to_fd(*entry)
 
     def readdir(self, path, fh=None):
         yield '.'
@@ -125,7 +139,10 @@ class NodlehsFuse(fuse.Operations):
         del self.fds[fh]
 
     def open(self, path, flags):
-        entry = self._get_child(path, File)
+        try:
+            entry = self._get_child(path, File)
+        except FetchError:
+            raise fuse.FuseOSError(errno.EIO)
 
         if not self.box.is_writable and flags & (os.O_WRONLY | os.O_RDWR):
             raise fuse.FuseOSError(errno.EROFS)
@@ -135,7 +152,9 @@ class NodlehsFuse(fuse.Operations):
     @rw
     def unlink(self, path):
         path = Path(path)
-        (directory_mode, directory) = self._get_child(path[:-1], Directory)
+        (directory_mode, directory) = self._get_child(path[:-1])
+        if not isinstance(directory, Directory):
+            raise fuse.FuseOSError(errno.ENOTDIR)
         try:
             del directory[path[-1]]
         except NoChild:
@@ -210,33 +229,53 @@ class NodlehsFuse(fuse.Operations):
         return self.fds[fh]
 
     def read(self, path, size, offset, fh=None):
-        (mode, child) = self._resolve(path, fh, File)
+        try:
+            (mode, child) = self._resolve(path, fh, File)
+        except FetchError:
+            raise fuse.FuseOSError(errno.EIO)
         child.seek(offset)
         return child.read(size)
 
     @rw
     def write(self, path, data, offset, fh=None):
-        (mode, child) = self._resolve(path, fh, File)
+        try:
+            (mode, child) = self._resolve(path, fh, File)
+        except FetchError:
+            raise fuse.FuseOSError(errno.EIO)
         child.seek(offset)
         return child.write(data)
 
     @rw
     def truncate(self, path, length, fh=None):
-        return self._resolve(path, fh, File).item.truncate(length)
+        try:
+            return self._resolve(path, fh, File).item.truncate(length)
+        except FetchError:
+            raise fuse.FuseOSError(errno.EIO)
 
     @rw
     def symlink(self, target, source):
         target = Path(target)
-        (target_directory_mode, target_directory) = self._get_child(target[:-1])
+        try:
+            (target_directory_mode, target_directory) = self._get_child(target[:-1])
+        except FetchError:
+            raise fuse.FuseOSError(errno.EIO)
+        if not isinstance(target_directory, Directory):
+            raise fuse.FuseOSError(errno.ENOTDIR)
         target_directory[target[-1]] = (stat.S_IFLNK, Symlink(self.box.storage, target=source))
 
     def readlink(self, path):
-        return str(self._get_child(path, Symlink).item)
+        try:
+            return str(self._get_child(path, Symlink).item)
+        except FetchError:
+            raise fuse.FuseOSError(errno.EIO)
 
     @rw
     def utimens(self, path, times=None):
         """Times is a (atime, mtime) tuple. If None use current time."""
-        (mode, child) = self._get_child(path, File)
+        try:
+            (mode, child) = self._get_child(path, File)
+        except FetchError:
+            raise fuse.FuseOSError(errno.EIO)
         if times is None:
             now = time.time()
             child.mtime = child.atime = now
@@ -245,7 +284,10 @@ class NodlehsFuse(fuse.Operations):
             child.mtime = times[1]
 
     def fsync(self, path, datasync, fh=None):
-        (mode, child) = self._resolve(path, fh)
+        try:
+            (mode, child) = self._resolve(path, fh)
+        except FetchError:
+            raise fuse.FuseOSError(errno.EIO)
         child.store()
 
     fsyncdir = fsync
