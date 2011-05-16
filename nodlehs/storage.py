@@ -221,10 +221,7 @@ class Storage(Repo, dbus.service.Object, Configurable):
         try:
             return self._boxes[name]
         except KeyError:
-            if name in self.refs.subkeys("refs/heads") or create:
-                self._boxes[name] = Box(self, name)
-            else:
-                raise KeyError("No such box.")
+            self._boxes[name] = Box(self, name, create)
         return self._boxes[name]
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
@@ -293,7 +290,7 @@ class NoRecord(Exception):
 
 class Box(threading.Thread, dbus.service.Object):
 
-    def __init__(self, storage, name):
+    def __init__(self, storage, name, create=False):
         self.head_lock = threading.RLock()
         self.config = {}
         self.storage = storage
@@ -304,7 +301,10 @@ class Box(threading.Thread, dbus.service.Object):
                                      "%s/%s" % (storage.__dbus_object_path__, name))
         threading.Thread.__init__(self, name="Box %s on Storage %s" % (name, storage.path))
         self.daemon = True
-        self.merge()
+        if create:
+            self.head = Record(self.storage)
+        else:
+            self.merge()
 
     @property
     def root(self):
