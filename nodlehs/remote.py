@@ -26,10 +26,6 @@ import dbus.service
 import uuid
 
 
-class FetchError(Exception):
-    pass
-
-
 class Remote(dbus.service.Object, Configurable):
 
     _id_ref = "refs/tags/id"

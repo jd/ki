@@ -30,6 +30,11 @@ import collections
 from .merge import *
 from StringIO import StringIO
 
+
+class FetchError(Exception):
+    pass
+
+
 class UnknownObjectType(Exception):
     """This object is unknown."""
     pass

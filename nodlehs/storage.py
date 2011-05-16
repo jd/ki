@@ -21,8 +21,8 @@
 from .fuse import FUSE
 from .utils import *
 from .config import Configurable, Config, BUS_INTERFACE
-from .objects import Record, File
-from .remote import Remote, FetchError, Syncer
+from .objects import Record, File, FetchError
+from .remote import Remote, Syncer
 from .commiter import TimeCommiter
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
@@ -209,6 +209,7 @@ class Storage(Repo, dbus.service.Object, Configurable):
         for remote in self.iterremotes():
             # Try to fetch and return the sha1 if ok
             try:
+                print "> Trying to fetch %s on remote %s" % (sha1, remote)
                 remote.fetch_sha1s([ sha1 ])
                 return sha1
             # If fetch failed, continue to next remote
