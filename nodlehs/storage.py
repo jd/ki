@@ -343,15 +343,11 @@ class Box(threading.Thread, dbus.service.Object):
         commit so it can be modified, or a new commit if no commit exist."""
         with self.head_lock:
             if self._next_record is None:
-                try:
-                    # Try to copy the current head
-                    self._next_record = self.head
-                    # Store parent now, for comparison in commit()
-                    self._next_record.parents.clear()
-                    self._next_record.parents.append(self.head)
-                except NoRecord:
-                    # This can happen if self.head does not exists.
-                    self._next_record = Record(self.storage)
+                # Copy the current head
+                self._next_record = self.head
+                # Store parent now, for comparison in commit()
+                self._next_record.parents.clear()
+                self._next_record.parents.append(self.head)
             return self._next_record
 
     @property
@@ -368,79 +364,53 @@ class Box(threading.Thread, dbus.service.Object):
         if isinstance(value, Commit):
             value = Record(self.storage, value)
         with self.head_lock:
-            # If the new head value is a children of current head, update
             try:
                 head = self.head
             except NoRecord:
-                # This branch has not commit yet
-                head = None
-            # Nothing to do (the easy case)
-            if head == value:
-                pass
-            # No commit ever, so accept the new commit
-            elif head is None:
                 self.storage.refs["refs/heads/%s" % self.box_name] = value.store()
-            elif value.is_child_of(head):
-                # If it's a child, it's ok
-                self.storage.refs["refs/heads/%s" % self.box_name] = value.store()
-            elif head.is_child_of(value):
-                # Trying to go back in time?
-                raise NoPlutoniumInDeLoreanError
-            elif head.find_common_ancestors(value):
-                # They got common ancestors, so they are from the same repo at least.
-                # We can merge them.
-                head.parents.clear()
-                head.parents.append(self.head)
-                head.merge_commit(value)
-                self.storage.refs["refs/heads/%s" % self.box_name] = head.store()
             else:
-                # This is only raised if they got not common ancestor, so
-                # they are totally unrelated. This is abnormal.
-                raise NotFastForward
+                # Nothing to do (the easy case)
+                if head == value:
+                    pass
+                elif value.is_child_of(head):
+                    # If it's a child, it's ok
+                    self.storage.refs["refs/heads/%s" % self.box_name] = value.store()
+                elif head.is_child_of(value):
+                    # Trying to go back in time?
+                    raise NoPlutoniumInDeLoreanError
+                elif head.find_common_ancestors(value):
+                    # They got common ancestors, so they are from the same repo at
+                    # least. We can merge them.
+                    # Copy head into a new record
+                    merge_record = head.copy()
+                    merge_record.parents.clear()
+                    merge_record.parents.append(head)
+                    merge_record.merge_commit(value)
+                    self.storage.refs["refs/heads/%s" % self.box_name] = merge_record.store()
+                else:
+                    # This is only raised if they got not common ancestor, so
+                    # they are totally unrelated. This is abnormal.
+                    raise NotFastForward
 
     @dbus.service.method(dbus_interface="%s.Box" % BUS_INTERFACE)
     def Commit(self):
         """Commit modification to the storage, if needed."""
         with self.head_lock:
             if self._next_record is not None:
-                print "New root tree id: ",
+                print "The next record root tree id: ",
                 print self._next_record.root.id()
-                try:
-                    head = self.head
-                except NoRecord:
-                    head = None
                 # Check that there's changes in that next record by
                 # comparing its root tree id against head's one and its
                 # parents one. If it's not different that these ones,
                 # committing is useless.
                 #
-                # if no_commit ever \
-                #         or (commit's tree is different than current head's one \
-                #                 and different than its parents ones)
-                if head is None \
-                        or (self._next_record.root != head.root \
-                                and self._next_record.root not in [ p.root for p in self._next_record.parents ]):
-                    # We have a different root tree, so we are different. Hehe.
+                # if commit's tree is different than current head's one \
+                #         and different than its parents ones
+                if self._next_record.root != self.head.root \
+                        and self._next_record.root not in [ p.root for p in self._next_record.parents ]:
                     print " Next record root tree is different"
-                    if head is not None and head not in self._next_record.parents:
-                        # Hum, current head is not our parent. It changed. We
-                        # need to merge head in the next record to create a
-                        # merge commit.
-                        print "  Merging head into next record"
-                        self._next_record.merge_commit(head)
-                    else:
-                        print "  Doing a fast-forward"
-                    self._next_record.update_timestamp()
-                    if not self.storage.refs.set_if_equals("refs/heads/%s" % self.box_name,
-                                                           head and head.id(),
-                                                           self._next_record.store()):
-                        # head changed while we were doing our merge, so
-                        # retry to commit once again, merging this new
-                        # head.
-                        print "  head changed, holy shit, recommit!"
-                        return self.Commit()
-                    else:
-                        self.Commited()
+                    self.head = self._next_record
+                    self.Commited()
                 # If _next_record did not change (no root tree change), we just
                 # reset in case head would have changed under our feet while
                 # we were away.
