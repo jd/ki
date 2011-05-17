@@ -170,6 +170,6 @@ class Syncer(threading.Thread):
             self.storage.push()
             print "FETCH"
             self.storage.fetch()
-            print "MERGE"
-            self.storage.merge()
+            print "UPDATE FROM REMOTES"
+            self.storage.update_from_remotes()
 

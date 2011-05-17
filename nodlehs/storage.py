@@ -189,9 +189,9 @@ class Storage(Repo, dbus.service.Object, Configurable):
                 # Store refs["refs/heads/remotes/REMOTE/BOX"] = sha
                 self.refs[ref.replace("/heads/", "/remotes/%s/" % remote.id, 1)] = sha
 
-    def merge(self):
+    def update_from_remotes(self):
         for box in self._boxes.itervalues():
-            box.merge()
+            box.update_from_remotes()
 
     def __getitem__(self, key):
         try:
@@ -305,7 +305,7 @@ class Box(threading.Thread, dbus.service.Object):
         if create:
             self.head = Record(self.storage)
         else:
-            self.merge()
+            self.update_from_remotes()
 
     @property
     def root(self):
@@ -325,9 +325,9 @@ class Box(threading.Thread, dbus.service.Object):
         except ValueError:
             raise NoRecord
 
-    def merge(self):
+    def update_from_remotes(self):
         try:
-            print "merge"
+            print "> Update from remote…"
             print self
             self.head = self.more_recent_record_on_remotes()
         except NoRecord:
