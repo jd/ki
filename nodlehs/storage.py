@@ -24,6 +24,7 @@ from .config import Configurable, Config, BUS_INTERFACE
 from .objects import Record, File, FetchError
 from .remote import Remote, Syncer
 from .commiter import TimeCommiter
+from .fs import NodlehsFuse
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
 from dulwich.objects import Commit
@@ -306,6 +307,7 @@ class Box(threading.Thread, dbus.service.Object):
             self.head = Record(self.storage)
         else:
             self.update_from_remotes()
+        self.fuse = NodlehsFuse(self)
 
     @property
     def root(self):
@@ -375,6 +377,7 @@ class Box(threading.Thread, dbus.service.Object):
                 elif value.is_child_of(head):
                     # If it's a child, it's ok
                     self.storage.refs["refs/heads/%s" % self.box_name] = value.store()
+                    self.fuse.fds.clear()
                 elif head.is_child_of(value):
                     # Trying to go back in time?
                     raise NoPlutoniumInDeLoreanError
@@ -387,6 +390,7 @@ class Box(threading.Thread, dbus.service.Object):
                     merge_record.parents.append(head)
                     merge_record.merge_commit(value)
                     self.storage.refs["refs/heads/%s" % self.box_name] = merge_record.store()
+                    self.fuse.fds.clear()
                 else:
                     # This is only raised if they got not common ancestor, so
                     # they are totally unrelated. This is abnormal.
@@ -409,6 +413,7 @@ class Box(threading.Thread, dbus.service.Object):
                 if self._next_record.root != self.head.root \
                         and self._next_record.root not in [ p.root for p in self._next_record.parents ]:
                     print " Next record root tree is different"
+                    self._next_record.update_timestamp()
                     self.head = self._next_record
                     self.Commited()
                 # If _next_record did not change (no root tree change), we just
@@ -423,9 +428,8 @@ class Box(threading.Thread, dbus.service.Object):
         self.storage.must_be_sync.set()
 
     def run(self):
-        from .fs import NodlehsFuse
         TimeCommiter(self, 300).start()
-        FUSE(NodlehsFuse(self), self.mountpoint, debug=True)
+        FUSE(self.fuse, self.mountpoint, debug=True)
         self.Commit()
 
     @dbus.service.method(dbus_interface="%s.Box" % BUS_INTERFACE,

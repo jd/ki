@@ -104,14 +104,15 @@ class NodlehsFuse(fuse.Operations):
     def to_fd(self, mode, item):
         """Return a fd for item."""
         # Collect all fd number
-        k = self.fds.keys()
-        k.sort()
-        try:
-            fd = k[-1] + 1
-        except IndexError:
-            fd = 0
-        self.fds[fd] = DirectoryEntry(mode, item)
-        return fd
+        with self.box.head_lock:
+            k = self.fds.keys()
+            k.sort()
+            try:
+                fd = k[-1] + 1
+            except IndexError:
+                fd = 0
+                self.fds[fd] = DirectoryEntry(mode, item)
+            return fd
 
     def opendir(self, path):
         try:
@@ -129,14 +130,16 @@ class NodlehsFuse(fuse.Operations):
             yield path
 
     def release(self, path, fh):
-        del self.fds[fh]
+        try:
+            del self.fds[fh]
+        except KeyError:
+            pass
 
         # Commit as soon as no more fds are opened
         if not self.fds:
             self.box.Commit()
 
-    def releasedir(self, path, fh):
-        del self.fds[fh]
+    releasedir = release
 
     def open(self, path, flags):
         try:
@@ -226,7 +229,8 @@ class NodlehsFuse(fuse.Operations):
         """Resolve a file based on fh or path."""
         if fh is None:
             return self._get_child(path, cls)
-        return self.fds[fh]
+        with self.box.head_lock:
+            return self.fds[fh]
 
     def read(self, path, size, offset, fh=None):
         try:
