@@ -303,11 +303,11 @@ class Box(threading.Thread, dbus.service.Object):
                                      "%s/%s" % (storage.__dbus_object_path__, name))
         threading.Thread.__init__(self, name="Box %s on Storage %s" % (name, storage.path))
         self.daemon = True
+        self.fuse = NodlehsFuse(self)
         if create:
             self.head = Record(self.storage)
         else:
             self.update_from_remotes()
-        self.fuse = NodlehsFuse(self)
 
     @property
     def root(self):

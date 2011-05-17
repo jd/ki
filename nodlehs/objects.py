@@ -335,7 +335,7 @@ class Directory(Storable):
                     if change.new.sha != child.id:
                         # Conflict! The file already exists but is different.
                         # Yeah, this is ugly, but for now…
-                        self["%s.%d" % (change.new.path, change.new.sha)] = (change.new.mode,
+                        self["%s.%s" % (change.new.path, change.new.sha)] = (change.new.mode,
                                                                              make_object(self.storage,
                                                                                          change.new.mode,
                                                                                          change.new.sha))
@@ -355,7 +355,7 @@ class Directory(Storable):
                     if change.new.sha != child.id:
                         # Conflict! The file already exists but is different.
                         # Yeah, this is ugly, but for now…
-                        self["%s.%d" % (change.new.path, change.new.sha)] = (change.new.mode,
+                        self["%s.%s" % (change.new.path, change.new.sha)] = (change.new.mode,
                                                                              make_object(self.storage,
                                                                                          change.new.mode,
                                                                                          change.new.sha))
@@ -588,8 +588,8 @@ class Record(Storable):
         print common_ancestor
         print other
         changes = diff_tree.RenameDetector(self.storage.object_store,
-                                           self.storage[common_ancestor].tree,
-                                           self.storage[other].tree).changes_with_renames()
+                                           common_ancestor.root.store(),
+                                           other.root.store()).changes_with_renames()
         print "    Changes:"
         print changes
         self.root.merge_tree_changes(changes)
