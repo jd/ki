@@ -22,6 +22,13 @@ class TestObjects(unittest.TestCase):
         Storable(self.storage, r.object)
         Storable(self.storage, r)
 
+    def test_Storable_copy(self):
+        r = Record(self.storage)
+        s = Record(self.storage, r.store())
+        scopy = s.copy()
+        self.assert_(scopy == s)
+        self.assert_(scopy is not s)
+
     def test_Record_find_common_ancestor(self):
         r1 = Record(self.storage)
         r2 = Record(self.storage)

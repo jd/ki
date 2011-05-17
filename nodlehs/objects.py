@@ -55,7 +55,9 @@ class Storable(object):
     def __init__(self, storage, obj=None):
         """Initialize an storable object."""
         self.storage = storage
-        if isinstance(obj, str):
+        if obj is None:
+            self._object = self._object_type()
+        elif isinstance(obj, str):
             self._object = storage[obj]
         elif isinstance(obj, Storable):
             self._object = obj.object
@@ -63,6 +65,9 @@ class Storable(object):
             self._object = obj
         else:
             raise UnknownObjectType(obj)
+
+    def copy(self):
+        return self.__class__(self.storage, self)
 
     @property
     def object(self):
@@ -121,13 +126,13 @@ DirectoryEntry = collections.namedtuple('DirectoryEntry', ['mode', 'item'])
 class Directory(Storable):
     """A directory."""
 
+    _object_type = Tree
+
     def __init__(self, storage, obj=None):
-        if obj is None:
-            obj = Tree()
+        super(Directory, self).__init__(storage, obj)
         # This is locally modified/added files which will belong to our tree
         # when we will dump ourselves.
         self.local_tree = {}
-        super(Directory, self).__init__(storage, obj)
 
     def _update(self, update_type):
         for name, (mode, child) in self.local_tree.iteritems():
@@ -370,9 +375,9 @@ class Directory(Storable):
 class File(Storable):
     """A file."""
 
+    _object_type = Blob
+
     def __init__(self, storage, obj=None):
-        if obj is None:
-            obj = Blob()
         super(File, self).__init__(storage, obj)
         self._data = StringIO(self._object.data)
 
@@ -420,8 +425,6 @@ class Symlink(File):
     """A symlink."""
 
     def __init__(self, storage, obj=None, target="/"):
-        if obj is None:
-            obj = Blob()
         super(Symlink, self).__init__(storage, obj)
         self.write(target)
 
@@ -438,21 +441,14 @@ class Symlink(File):
 class Record(Storable):
     """A commit record."""
 
+    _object_type = Commit
+
     def __init__(self, storage, commit=None):
         """Create a new Record. If commit is None, we create a Record based
         on a new empty Commit, i.e. a new commit with a new empty Tree."""
-        if commit is None:
-            commit = Commit()
-            need_update = True
-            self.root = Directory(storage)
-        else:
-            if isinstance(commit, str):
-                commit = storage[commit]
-            self.root = Directory(storage, storage[commit.tree])
-            need_update = False
         super(Record, self).__init__(storage, commit)
-        self._parents = OrderedSet([ Record(storage, storage[parent]) for parent in self._object.parents ])
-        if need_update:
+        if commit is None:
+            self._object.tree = Tree()
             passwd = pwd.getpwuid(os.getuid())
             self._object.author = "%s <%s@%s>" % (passwd.pw_gecos.split(",")[0],
                                                   passwd.pw_name,
@@ -460,7 +456,8 @@ class Record(Storable):
             self._object.committer = "Nodlehs <nodlehs@naquadah.org>"
             self._object.message = "Nodlehs auto-commit"
             self.update_timestamp()
-            self._update(Record.__init__)
+        self._parents = OrderedSet([ Record(storage, storage[parent]) for parent in self._object.parents ])
+        self.root = Directory(storage, self._object.tree)
 
     @property
     def parents(self):
