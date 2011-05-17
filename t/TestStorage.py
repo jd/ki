@@ -17,8 +17,7 @@ def init_storage(self):
     self.repo_path = tempfile.mktemp()
     os.mkdir(self.repo_path)
     self.storage = Storage.init_bare(dbus.service.BusName(BUS_INTERFACE, dbus.SessionBus()), self.repo_path)
-    self.box = Box(self.storage, "master")
-
+    self.box = Box(self.storage, "master", create=True)
 
 class TestStorage(unittest.TestCase):
 

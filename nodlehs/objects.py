@@ -19,7 +19,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .utils import *
-from dulwich.objects import Blob, Commit, Tree, S_IFGITLINK, S_ISGITLINK
+from dulwich.objects import Blob, Commit, Tree, S_IFGITLINK, S_ISGITLINK, ShaFile
 import dulwich.diff_tree as diff_tree
 import stat
 import time
@@ -57,8 +57,12 @@ class Storable(object):
         self.storage = storage
         if isinstance(obj, str):
             self._object = storage[obj]
-        else:
+        elif isinstance(obj, Storable):
+            self._object = obj.object
+        elif isinstance(obj, ShaFile):
             self._object = obj
+        else:
+            raise UnknownObjectType(obj)
 
     @property
     def object(self):

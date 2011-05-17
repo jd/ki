@@ -6,7 +6,7 @@ import os
 import shutil
 import dbus.service
 from nodlehs.storage import Storage
-from nodlehs.objects import File, Directory, Record, NoChild
+from nodlehs.objects import File, Directory, Record, NoChild, Storable
 from dulwich.objects import *
 
 from TestStorage import init_storage
@@ -15,6 +15,12 @@ class TestObjects(unittest.TestCase):
 
     def setUp(self):
         init_storage(self)
+
+    def test_Storable_init(self):
+        r = Record(self.storage)
+        Storable(self.storage, r.store())
+        Storable(self.storage, r.object)
+        Storable(self.storage, r)
 
     def test_Record_find_common_ancestor(self):
         r1 = Record(self.storage)
@@ -52,7 +58,6 @@ class TestObjects(unittest.TestCase):
         self.assert_(r6.find_common_ancestors(r2) == set([ r1 ]))
         r6copy = Record(self.storage, r6.store())
         self.assert_(r6copy.find_common_ancestors(r5) == set([ r2 ]))
-
 
     def test_Record_intervals(self):
         r1 = Record(self.storage)
