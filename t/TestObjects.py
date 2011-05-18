@@ -191,6 +191,12 @@ class TestObjects(unittest.TestCase):
         other.write("hello\nworld\nwhere are you?\n")
         self.assertRaises(MergeConflictError, f.merge, str(base), str(other))
 
+    def test_Symlink_target(self):
+        s = Symlink(self.storage, None, "/")
+        self.assert_(s.target == "/")
+        s.target = "/stuff"
+        self.assert_(s.target == "/stuff")
+
     def tearDown(self):
         shutil.rmtree(self.repo_path)
 
