@@ -198,7 +198,7 @@ class TestObjects(unittest.TestCase):
         self.assert_(s.target == "/stuff")
 
     def tearDown(self):
-        shutil.rmtree(self.repo_path)
+        shutil.rmtree(self.storage.path)
 
 if __name__ == '__main__':
     unittest.main()

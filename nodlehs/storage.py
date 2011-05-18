@@ -46,20 +46,20 @@ def get_storage_manager(bus):
 
 class StorageManager(dbus.service.Object):
 
-    def __init__(self, busname):
+    def __init__(self, bus):
         # XXX Singleton?
         self.storages = {}
         self.user_storage = None
-        self.busname = busname
-        super(StorageManager, self).__init__(busname, "%s/%s" % (BUS_PATH,
-                                                                 self.__class__.__name__))
+        self.bus = bus
+        super(StorageManager, self).__init__(bus, "%s/%s" % (BUS_PATH,
+                                                             self.__class__.__name__))
 
     def create_storage(self, path=None):
         if path is None:
             path = xdg.BaseDirectory.save_data_path("nodlehs/storage")
         if len(os.listdir(path)) is 0:
-            return Storage.init_bare(self.busname, path)
-        return Storage(self.busname, path)
+            return Storage.init_bare(self.bus, path)
+        return Storage(self.bus, path)
 
     @dbus.service.method(dbus_interface="%s.StorageManager" % BUS_INTERFACE,
                          in_signature='s', out_signature='o')
