@@ -39,6 +39,19 @@ class TestStorage(TestUsingStorage):
     def test_Storage_config(self):
         self.assert_(isinstance(self.storage.config, Config))
 
+    def test_Storage_remotes(self):
+        self.storage.AddRemote("s2", "/tmp/sometest", 100)
+        self.assert_(len(self.storage.ListRemotes()) == 1)
+        self.storage.RemoveRemote("s2")
+        self.assert_(len(self.storage.ListRemotes()) == 0)
+
+    def test_Storage_push(self):
+        s2 = self.make_temp_storage()
+        self.storage.AddRemote("s2", s2.path, 100)
+        self.storage.push()
+        self.assert_(self.storage.remotes["s2"].refs.has_key("refs/remotes/%s/master" % (self.storage.id)))
+        shutil.rmtree(s2.path)
+
     def test_Box_root(self):
         self.assert_(self.box.root is not None)
         self.assert_(self.box.root is self.box.record.root)
