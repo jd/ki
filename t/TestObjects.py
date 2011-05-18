@@ -6,7 +6,7 @@ import os
 import shutil
 import dbus.service
 from nodlehs.storage import Storage
-from nodlehs.objects import File, Directory, Record, NoChild, Storable, UnknownObjectType
+from nodlehs.objects import File, Directory, Record, NoChild, Storable, UnknownObjectType, Symlink
 from dulwich.objects import *
 
 from TestStorage import init_storage
@@ -29,6 +29,16 @@ class TestObjects(unittest.TestCase):
         scopy = s.copy()
         self.assert_(scopy == s)
         self.assert_(scopy is not s)
+
+    def test_Storable_len(self):
+        r = Record(self.storage)
+        self.assert_(len(r))
+
+    def test_Storable_eq(self):
+        self.assert_(Symlink(self.storage, None, "/dtc") == Symlink(self.storage, None, "/dtc"))
+
+    def test_Storable_hash(self):
+        self.assert_(set([Symlink(self.storage, None, "/dtc")]) == set([Symlink(self.storage, None, "/dtc")]))
 
     def test_Record_find_common_ancestor(self):
         r1 = Record(self.storage)
