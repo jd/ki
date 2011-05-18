@@ -166,7 +166,7 @@ class Storage(Repo, dbus.service.Object, Configurable):
                                                 for record in missing_records \
                                                 for blob_list in record.root.list_blobs_recursive() ])
                 # Ask to send every blob of every missing commits
-                blobs_refs.update([ ("refs/tags/%s" % blob, blob) for blob in blobs ])
+                blobs_refs.update([ ("refs/blobs/%s" % blob, blob) for blob in blobs ])
 
         return blobs_refs
 
@@ -191,8 +191,8 @@ class Storage(Repo, dbus.service.Object, Configurable):
 
     def fetch(self):
         """Fetch all boxes from all remotes."""
-        for remote in self.iterremotes():
-            refs = self._fetch_determine_refs(remote.fetch(lambda refs: self._fetch_determine_refs(refs).values()))
+        for remote in self.iterremotes():x
+            refs = self._fetch_determine_refs(remote.fetch(lambda refs: None))
             for ref, sha in refs.iteritems():
                 # Store refs["refs/heads/remotes/REMOTE/BOX"] = sha
                 self.refs[ref.replace("/heads/", "/remotes/%s/" % remote.id, 1)] = sha
@@ -219,7 +219,8 @@ class Storage(Repo, dbus.service.Object, Configurable):
             try:
                 print "> Trying to fetch %s on remote %s" % (sha1, remote)
                 remote.fetch_sha1s([ sha1 ])
-                self.refs["refs/tags/%s" % sha1] = sha1
+                if isinstance(self[sha1], Blob):
+                    self.refs["refs/blobs/%s" % sha1] = sha1
                 return sha1
             # If fetch failed, continue to next remote
             except FetchError:

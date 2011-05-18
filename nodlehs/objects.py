@@ -415,7 +415,7 @@ class File(Storable):
         # Generate a tag with the sha1 that points to the sha1
         # That way, our blob object is not unreachable and cannot be garbage
         # collected
-        self.storage.refs['refs/tags/%s' % oid ] = oid
+        self.storage.refs['refs/blobs/%s' % oid ] = oid
         return oid
 
     def merge(self, base, other):
@@ -504,7 +504,7 @@ class Record(Storable):
 
         if not other:
             return commits
-        
+
         ret = OrderedSet()
         for commit_set in commits:
             if other in commit_set:
