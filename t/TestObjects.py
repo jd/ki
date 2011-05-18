@@ -6,7 +6,7 @@ import os
 import shutil
 import dbus.service
 from nodlehs.storage import Storage
-from nodlehs.objects import File, Directory, Record, NoChild, Storable
+from nodlehs.objects import File, Directory, Record, NoChild, Storable, UnknownObjectType
 from dulwich.objects import *
 
 from TestStorage import init_storage
@@ -21,6 +21,7 @@ class TestObjects(unittest.TestCase):
         Storable(self.storage, r.store())
         Storable(self.storage, r.object)
         Storable(self.storage, r)
+        self.assertRaises(UnknownObjectType, Storable, self.storage, 123)
 
     def test_Storable_copy(self):
         r = Record(self.storage)
