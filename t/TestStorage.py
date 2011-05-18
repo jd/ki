@@ -3,6 +3,7 @@
 import unittest
 import tempfile
 import os
+import time
 import shutil
 import dbus.mainloop.glib
 import dbus.service
@@ -59,6 +60,36 @@ class TestStorage(TestUsingStorage):
         self.storage.fetch()
         self.assert_("%s/master" % s2.id in self.storage.refs.as_dict("refs/remotes").keys())
         shutil.rmtree(s2.path)
+
+    def test_Storage_get_box(self):
+        self.assertRaises(NoRecord, self.storage.get_box, "bla")
+
+    def test_Storage_sync(self):
+        s2 = self.make_temp_storage()
+        s3 = self.make_temp_storage()
+        self.storage.AddRemote("s2", s2.path, 100)
+        self.storage.AddRemote("s3", s3.path, 50)
+
+        self.storage.push()
+        box2 = s2.get_box("master")
+        self.assert_(box2.head == self.box.head)
+
+        # add a file
+        self.box.root["a"] = (stat.S_IFREG, File(self.storage))
+        self.box.Commit()
+
+        print self.box.head
+        print box2.head
+
+        self.storage.must_be_sync.set()
+        time.sleep(2)
+        s2.must_be_sync.set()
+        time.sleep(2)
+        self.assert_(self.box.head == box2.head)
+        self.assert_(self.box.head == s2.get_box("master").head)
+
+        shutil.rmtree(s2.path)
+        shutil.rmtree(s3.path)
 
     def test_Box_root(self):
         self.assert_(self.box.root is not None)

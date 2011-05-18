@@ -332,8 +332,6 @@ class Box(threading.Thread, dbus.service.Object):
             print "> Update from remote…"
             print self
             self.head = self.more_recent_record_on_remotes()
-        except NoRecord:
-            print " > Remotes got no record"
         except NoPlutoniumInDeLoreanError:
             print " > Denied: not going back in time doc"
         except NotFastForward:
