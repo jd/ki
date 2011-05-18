@@ -64,7 +64,9 @@ class Storable(object):
             if not isinstance(self._object, self._object_type):
                 raise BadObjectType(self._object)
         elif isinstance(obj, type(self)):
-            self._object = obj.object
+            # Store the object, because if we copy the object and access one
+            # of its attribute later without having it stored, it will fail.
+            self._object = storage[obj.store()]
         elif isinstance(obj, ShaFile):
             self._object = obj
         else:
