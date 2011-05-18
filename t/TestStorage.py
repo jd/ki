@@ -11,22 +11,26 @@ from nodlehs.storage import *
 from nodlehs.objects import File
 from dulwich.objects import *
 
-def make_temp_storage(bus):
-    repo_path = tempfile.mktemp()
-    os.mkdir(repo_path)
-    return Storage.init_bare(bus, repo_path)
 
-def init_storage(self):
-    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-    dbus.service.BusName(BUS_INTERFACE, dbus.SessionBus())
-    self.bus = dbus.service.BusName(BUS_INTERFACE, dbus.SessionBus())
-    self.storage = make_temp_storage(self.bus)
-    self.box = Box(self.storage, "master", create=True)
+class TestUsingStorage(unittest.TestCase):
 
-class TestStorage(unittest.TestCase):
+    def make_temp_storage(self):
+        repo_path = tempfile.mktemp()
+        os.mkdir(repo_path)
+        return Storage.init_bare(self.bus, repo_path)
 
     def setUp(self):
-        init_storage(self)
+        dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+        dbus.service.BusName(BUS_INTERFACE, dbus.SessionBus())
+        self.bus = dbus.service.BusName(BUS_INTERFACE, dbus.SessionBus())
+        self.storage = self.make_temp_storage()
+        self.box = Box(self.storage, "master", create=True)
+
+    def tearDown(self):
+        shutil.rmtree(self.storage.path)
+
+
+class TestStorage(TestUsingStorage):
 
     def test_Storage_id(self):
         self.assert_(isinstance(self.storage.id, str))
@@ -39,9 +43,6 @@ class TestStorage(unittest.TestCase):
         self.assert_(self.box.root is not None)
         self.assert_(self.box.root is self.box.record.root)
         self.assert_(self.box.root is self.box._next_record.root)
-
-    def tearDown(self):
-        shutil.rmtree(self.storage.path)
 
 if __name__ == '__main__':
     unittest.main()

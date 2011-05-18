@@ -9,12 +9,9 @@ from nodlehs.storage import Storage
 from nodlehs.objects import *
 from dulwich.objects import *
 
-from TestStorage import init_storage
+from TestStorage import TestUsingStorage
 
-class TestObjects(unittest.TestCase):
-
-    def setUp(self):
-        init_storage(self)
+class TestObjects(TestUsingStorage):
 
     def test_Storable_init(self):
         r = Record(self.storage)
@@ -196,9 +193,6 @@ class TestObjects(unittest.TestCase):
         self.assert_(s.target == "/")
         s.target = "/stuff"
         self.assert_(s.target == "/stuff")
-
-    def tearDown(self):
-        shutil.rmtree(self.storage.path)
 
 if __name__ == '__main__':
     unittest.main()
