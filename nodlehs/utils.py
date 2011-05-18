@@ -95,6 +95,9 @@ class OrderedSet(list):
         for item in iterable:
             self.append(item)
 
+    def __add__(self, other):
+        return OrderedSet(super(OrderedSet, self).__add__(other))
+
     def append(self, item):
         if not item in self:
             return super(OrderedSet, self).append(item)
@@ -112,6 +115,9 @@ class OrderedSet(list):
 
     def clear(self):
         del self[:]
+
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, super(OrderedSet, self).__repr__())
 
 
 class SingletonType(type):
