@@ -89,10 +89,9 @@ class TestObjects(TestUsingStorage):
         r3 = Record(self.storage)
         r1.parents.append(r2)
         r2.parents.append(r3)
-        self.assert_(r3.commit_intervals(r1) == [ set([ r2 ]) ])
-        self.assert_(r2.commit_intervals(r1) == [])
+        self.assert_(r3.commit_intervals(r1) == None)
+        self.assert_(r2.commit_intervals(r1) == None)
         self.assert_(r1.commit_intervals(r3) == [ set([ r2 ] )])
-        self.assert_(r3.commit_intervals(r1, False) is None)
 
     def test_Record_is_child_of(self):
         r1 = Record(self.storage)

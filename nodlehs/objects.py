@@ -496,25 +496,21 @@ class Record(Storable):
                     return True
                 commits.add(set(commit.parents))
 
-    def commit_intervals(self, other, rev=True):
+    def commit_intervals(self, other=None):
         """Return the list of commits between two records.
         Return None if not found.
-        If rev is True, try the other way around too, in case objects are inversed.
-
         The normal argument order is child.commit_intervals(a_parent)."""
         commits = self.commit_history_list()
-        ret = OrderedSet()
 
+        if not other:
+            return commits
+        
+        ret = OrderedSet()
         for commit_set in commits:
             if other in commit_set:
                 return ret
             else:
                 ret.append(commit_set)
-
-        if rev:
-            return other.commit_intervals(self, False)
-        else:
-            return None
 
     def commit_history_list(self):
         """Return a list of commit history list for commit using
