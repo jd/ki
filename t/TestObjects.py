@@ -173,6 +173,24 @@ class TestObjects(unittest.TestCase):
         self.assert_(isinstance(directory["m"][1], Directory))
         self.assertRaises(NoChild, lambda: directory["m"][1]["k"])
 
+    def test_File_operations(self):
+        f = File(self.storage)
+        f.write("abc")
+        f.seek(0)
+        self.assert_(f.read() == "abc")
+        self.assert_(len(f) == 3)
+        f.truncate(0)
+        self.assert_(f.read() == "")
+
+    def test_File_merge(self):
+        base = File(self.storage)
+        base.write("hello\nworld\nhow are you?\n")
+        f = File(self.storage)
+        f.write("hello\nyou\nhow are you?\n")
+        other = File(self.storage)
+        other.write("hello\nworld\nwhere are you?\n")
+        self.assertRaises(MergeConflictError, f.merge, str(base), str(other))
+
     def tearDown(self):
         shutil.rmtree(self.repo_path)
 
