@@ -500,7 +500,7 @@ class Record(Storable):
         """Return the list of commits between two records.
         Return None if not found.
         The normal argument order is child.commit_intervals(a_parent)."""
-        commits = self.commit_history_list()
+        commits = self.history()
 
         if not other:
             return commits
@@ -512,9 +512,9 @@ class Record(Storable):
             else:
                 ret.append(commit_set)
 
-    def commit_history_list(self):
-        """Return a list of commit history list for commit using
-        breadth-first-search."""
+    def history(self):
+        """Return an OrderedSet of parents commit using breadth-first-search.
+        The returned OrderedSet is composed of sets of all parents."""
 
         commits = OrderedSet([ set(self.parents) ])
 
@@ -523,6 +523,36 @@ class Record(Storable):
                 commits.add(set(commit.parents))
 
         return commits
+
+    @staticmethod
+    def records_blob_list(records):
+        """Return the set of all blobs referenced by all records in list."""
+        # Merge all records set in one set
+        records = reduce(set.union, records)
+        # Build the blob set of all records
+        return reduce(set.union, [ set(blob_list) \
+                                       for record in records \
+                                       for blob_list in record.root.list_blobs_recursive() ],
+                      set())
+
+        # Ask to send every blob of every missing commits
+        return dict([ ("refs/blobs/%s" % blob, blob) for blob in blobs ])
+
+    def blobs_list_dict(self, blobs):
+        """Return a dict mapping every blob to its ref if it is locally stored.
+        That means that the returned dict will have
+
+          { "refs/blobs/<blob>": "<blob>" }
+
+        set if "refs/blobs/<blob>" locally exists. Avoiding trying to push
+        blobs we do not store."""
+        return dict([ ("refs/blobs/%s" % blob, blob) \
+                          for blob in blobs \
+                          if self.storage.refs.as_dict("refs/blobs").has_key(blob) ])
+
+    def determine_blobs(self):
+        """Return a dict valid to be used as a reference dict in determine wants for remote push."""
+        return self.blobs_list_dict(self.records_blob_list(self.history()))
 
     def find_common_ancestors(self, other):
         """Find the first common ancestors with another Record.
@@ -551,7 +581,7 @@ class Record(Storable):
         parent field of a commit, and considers them as a set rather than a
         list.
         """
-        commits1 = self.commit_history_list()
+        commits1 = self.history()
         commits2 = OrderedSet([ set(other.parents) ])
 
         for commit2_set in commits2:

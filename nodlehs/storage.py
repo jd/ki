@@ -139,37 +139,6 @@ class Storage(Repo, dbus.service.Object, Configurable):
         return dict([ (ref, sha) for ref, sha in refs.iteritems()
                       if ref.startswith("refs/heads/") or ref.startswith("refs/remotes/") ])
 
-    def _sync_blobs(self, oldrefs, newrefs):
-        blobs_refs = {}
-        for branch_name, head in newrefs.iteritems():
-
-            if not branch_name.startswith("refs/remotes/"):
-                continue
-
-            head_record = Record(self.storage, head)
-
-            if oldrefs.has_key(branch_name):
-                missing_records = head_record.commit_intervals(oldrefs[branch_name])
-            else:
-                # The remote did not have this branch, so push every
-                # blob from the branch.
-                missing_records = head_record.commit_intervals()
-
-            # Merge all records in a single set
-            missing_records = reduce(set.union, missing_records)
-
-            # If missing_records is None, nothing to push
-            # This might also means the boxes got nothing in common!
-            if missing_records:
-                # Build the blob set list of all missing commits
-                blobs = reduce(set.union, [ set(blob_list) \
-                                                for record in missing_records \
-                                                for blob_list in record.root.list_blobs_recursive() ])
-                # Ask to send every blob of every missing commits
-                blobs_refs.update([ ("refs/blobs/%s" % blob, blob) for blob in blobs ])
-
-        return blobs_refs
-
     def push(self):
         """Push all boxes to all remotes."""
         for remote in self.iterremotes():
@@ -179,8 +148,11 @@ class Storage(Repo, dbus.service.Object, Configurable):
                 newrefs = oldrefs.copy()
                 for branch_name, head in self.refs.as_dict("refs/remotes").iteritems():
                     newrefs["refs/remotes/%s" % branch_name] = head
+                    # XXX implements and use history(Ndays)
+                    newrefs.update(Record(self, head).determine_blobs())
                 for branch_name, head in self.refs.as_dict("refs/heads").iteritems():
                     newrefs["refs/remotes/%s/%s" % (self.id, branch_name)] = head
+                    newrefs.update(Record(self, head).determine_blobs())
                 return newrefs
 
             try:
@@ -191,7 +163,7 @@ class Storage(Repo, dbus.service.Object, Configurable):
 
     def fetch(self):
         """Fetch all boxes from all remotes."""
-        for remote in self.iterremotes():x
+        for remote in self.iterremotes():
             refs = self._fetch_determine_refs(remote.fetch(lambda refs: None))
             for ref, sha in refs.iteritems():
                 # Store refs["refs/heads/remotes/REMOTE/BOX"] = sha
