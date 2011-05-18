@@ -50,7 +50,14 @@ class NotDirectory(Exception):
     pass
 
 
+class BadObjectType(Exception):
+    """Bad object type."""
+    pass
+
+
 class Storable(object):
+
+    _object_type = ShaFile
 
     def __init__(self, storage, obj=None):
         """Initialize an storable object."""
@@ -59,6 +66,8 @@ class Storable(object):
             self._object = self._object_type()
         elif isinstance(obj, str):
             self._object = storage[obj]
+            if not isinstance(self._object, self._object_type):
+                raise BadObjectType(self._object)
         elif isinstance(obj, Storable):
             self._object = obj.object
         elif isinstance(obj, ShaFile):
@@ -109,11 +118,11 @@ class Storable(object):
 
 def make_object(storage, mode, sha):
     """Make a storage object from an sha."""
-    if mode & S_IFGITLINK:
+    if S_ISGITLINK(mode):
         return File(storage, sha)
-    elif mode & stat.S_IFDIR:
+    elif stat.S_ISDIR(mode):
         return Directory(storage, sha)
-    elif mode & stat.S_IFLNK:
+    elif stat.S_ISLNK(mode):
         return Symlink(storage, sha)
     raise UnknownObjectType(sha)
 
