@@ -49,7 +49,15 @@ class TestStorage(TestUsingStorage):
         s2 = self.make_temp_storage()
         self.storage.AddRemote("s2", s2.path, 100)
         self.storage.push()
-        self.assert_(self.storage.remotes["s2"].refs.has_key("refs/remotes/%s/master" % (self.storage.id)))
+        self.assert_(self.storage.remotes["s2"].refs.has_key("refs/remotes/%s/master" % self.storage.id))
+        shutil.rmtree(s2.path)
+
+    def test_Storage_fetch(self):
+        s2 = self.make_temp_storage()
+        box2 = Box(s2, "master", create=True)
+        self.storage.AddRemote("s2", s2.path, 100)
+        self.storage.fetch()
+        self.assert_("%s/master" % s2.id in self.storage.refs.as_dict("refs/remotes").keys())
         shutil.rmtree(s2.path)
 
     def test_Box_root(self):
