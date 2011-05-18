@@ -212,6 +212,7 @@ class Storage(Repo, dbus.service.Object, Configurable):
             try:
                 print "> Trying to fetch %s on remote %s" % (sha1, remote)
                 remote.fetch_sha1s([ sha1 ])
+                self.refs["refs/tags/%s" % sha1] = sha1
                 return sha1
             # If fetch failed, continue to next remote
             except FetchError:
