@@ -35,11 +35,6 @@ class FetchError(Exception):
     pass
 
 
-class UnknownObjectType(Exception):
-    """This object is unknown."""
-    pass
-
-
 class NoChild(Exception):
     """There is no such child."""
     pass
@@ -68,12 +63,12 @@ class Storable(object):
             self._object = storage[obj]
             if not isinstance(self._object, self._object_type):
                 raise BadObjectType(self._object)
-        elif isinstance(obj, Storable):
+        elif isinstance(obj, type(self)):
             self._object = obj.object
         elif isinstance(obj, ShaFile):
             self._object = obj
         else:
-            raise UnknownObjectType(obj)
+            raise BadObjectType(obj)
 
     def copy(self):
         return self.__class__(self.storage, self)
@@ -124,7 +119,7 @@ def make_object(storage, mode, sha):
         return Directory(storage, sha)
     elif stat.S_ISLNK(mode):
         return Symlink(storage, sha)
-    raise UnknownObjectType(sha)
+    raise BadObjectType(sha)
 
 
 class UnknownChangeType(Exception):

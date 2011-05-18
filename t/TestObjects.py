@@ -21,7 +21,7 @@ class TestObjects(unittest.TestCase):
         Storable(self.storage, r.store())
         Storable(self.storage, r.object)
         Storable(self.storage, r)
-        self.assertRaises(UnknownObjectType, Storable, self.storage, 123)
+        self.assertRaises(BadObjectType, Storable, self.storage, 123)
 
     def test_Storable_copy(self):
         r = Record(self.storage)
@@ -41,7 +41,7 @@ class TestObjects(unittest.TestCase):
         self.assert_(set([Symlink(self.storage, None, "/dtc")]) == set([Symlink(self.storage, None, "/dtc")]))
 
     def test_make_object(self):
-        self.assertRaises(UnknownObjectType, make_object, self.storage, 0, "")
+        self.assertRaises(BadObjectType, make_object, self.storage, 0, "")
         self.assert_(isinstance(make_object(self.storage, S_IFGITLINK, File(self.storage).store()), File))
         self.assert_(isinstance(make_object(self.storage, stat.S_IFDIR, Directory(self.storage).store()), Directory))
         self.assertRaises(BadObjectType, make_object,
