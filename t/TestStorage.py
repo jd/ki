@@ -24,6 +24,13 @@ class TestStorage(unittest.TestCase):
     def setUp(self):
         init_storage(self)
 
+    def test_Storage_id(self):
+        self.assert_(isinstance(self.storage.id, str))
+        self.assert_(len(self.storage.id) == 36)
+
+    def test_Storage_config(self):
+        self.assert_(isinstance(self.storage.config, Config))
+
     def test_Box_root(self):
         self.assert_(self.box.root is not None)
         self.assert_(self.box.root is self.box.record.root)
