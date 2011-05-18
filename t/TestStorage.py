@@ -75,7 +75,8 @@ class TestStorage(TestUsingStorage):
         self.assert_(box2.head == self.box.head)
 
         # add a file
-        self.box.root["a"] = (stat.S_IFREG, File(self.storage))
+        f = File(self.storage)
+        self.box.root["a"] = (stat.S_IFREG, f)
         self.box.Commit()
 
         print self.box.head
@@ -87,6 +88,10 @@ class TestStorage(TestUsingStorage):
         time.sleep(2)
         self.assert_(self.box.head == box2.head)
         self.assert_(self.box.head == s2.get_box("master").head)
+
+        # Check blobs have been pushed also
+        self.assert_(s2.refs.as_dict("refs/blobs").has_key(f.id()))
+        self.assert_(s3.refs.as_dict("refs/blobs").has_key(f.id()))
 
         shutil.rmtree(s2.path)
         shutil.rmtree(s3.path)

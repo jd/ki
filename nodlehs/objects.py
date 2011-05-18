@@ -529,12 +529,9 @@ class Record(Storable):
     @staticmethod
     def records_blob_list(records):
         """Return the set of all blobs referenced by all records in list."""
-        # Merge all records set in one set
-        records = reduce(set.union, records)
         # Build the blob set of all records
-        return reduce(set.union, [ set(blob_list) \
-                                       for record in records \
-                                       for blob_list in record.root.list_blobs_recursive() ],
+        return reduce(set.union, [ record.root.list_blobs_recursive() \
+                                       for record in records ],
                       set())
 
         # Ask to send every blob of every missing commits
@@ -554,7 +551,11 @@ class Record(Storable):
 
     def determine_blobs(self):
         """Return a dict valid to be used as a reference dict in determine wants for remote push."""
-        return self.blobs_list_dict(self.records_blob_list(self.history()))
+        # Merge all records
+        records = reduce(set.union, self.history())
+        # Add self to history!
+        records.add(self)
+        return self.blobs_list_dict(self.records_blob_list(records))
 
     def find_common_ancestors(self, other):
         """Find the first common ancestors with another Record.

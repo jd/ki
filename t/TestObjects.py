@@ -115,6 +115,19 @@ class TestObjects(TestUsingStorage):
         self.assert_(r3 >= r3)
         self.assert_(r3 < r2)
 
+    def test_Record_records_blob_list(self):
+        f1 = File(self.storage)
+        f2 = File(self.storage)
+        f2.write("bla")
+        r = Record(self.storage)
+        r.root["a"] = (644, f1)
+        r.root["b/x"] = (644, f2)
+        r2 = Record(self.storage, r)
+        f3 = File(self.storage)
+        f3.write("blabla")
+        r2.root["z"] = (644, f3)
+        self.assert_(r.records_blob_list(set([ r, r2 ])) == set([ f1.id(), f2.id(), f3.id() ]))
+
     def test_Directory_list_blobs(self):
         d = Directory(self.storage)
         f1 = File(self.storage)
