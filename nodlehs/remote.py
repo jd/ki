@@ -80,8 +80,8 @@ class Remote(dbus.service.Object, Configurable):
                 f.write(str(uuid.uuid4()))
                 def determine_wants(refs):
                     newrefs = refs.copy()
-                    refs[Remote._id_ref] = f.store()
-                    return refs
+                    newrefs[Remote._id_ref] = f.store()
+                    return newrefs
                 self.push(determine_wants)
                 self._id = str(f)
         return self._id
