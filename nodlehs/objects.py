@@ -115,7 +115,7 @@ def make_object(storage, mode, sha):
         return Directory(storage, sha)
     elif mode & stat.S_IFLNK:
         return Symlink(storage, sha)
-    raise UnknownObjectType(child)
+    raise UnknownObjectType(sha)
 
 
 class UnknownChangeType(Exception):
