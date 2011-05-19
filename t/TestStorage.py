@@ -7,7 +7,6 @@ import time
 import shutil
 import dbus.mainloop.glib
 import dbus.service
-import nodlehs.bus
 from nodlehs.storage import *
 from nodlehs.objects import File
 from dulwich.objects import *
