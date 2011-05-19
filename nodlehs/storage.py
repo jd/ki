@@ -169,6 +169,13 @@ class Storage(Repo, dbus.service.Object, Configurable):
                 # Store refs["refs/heads/remotes/REMOTE/BOX"] = sha
                 self.refs[ref.replace("/heads/", "/remotes/%s/" % remote.id, 1)] = sha
 
+    def fetch_blobs(self):
+        """Fetch all needed blobs."""
+        for refbase in [ "refs/heads", "refs/remotes" ]:
+            for head in self.refs.as_dict(refbase).itervalues():
+                for blob in Record(self, head).determine_blobs().itervalues():
+                    self[blob]
+
     def update_from_remotes(self):
         for box in self._boxes.itervalues():
             box.update_from_remotes()
