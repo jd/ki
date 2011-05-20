@@ -59,7 +59,9 @@ class StorageManager(dbus.service.Object):
             path = xdg.BaseDirectory.save_data_path("nodlehs/storage")
         if len(os.listdir(path)) is 0:
             return Storage.init_bare(self.bus, path)
-        return Storage(self.bus, path)
+        s = Storage(self.bus, path)
+        s.syncer.start()
+        return s
 
     @dbus.service.method(dbus_interface="%s.StorageManager" % BUS_INTERFACE,
                          in_signature='s', out_signature='o')
@@ -92,7 +94,7 @@ class Storage(Repo, dbus.service.Object, Configurable):
                                      "%s/%s_%s" % (BUS_PATH,
                                                    dbus_clean_name(os.path.splitext(os.path.basename(path))[0]),
                                                    dbus_uuid()))
-        Syncer(self)
+        self.syncer = Syncer(self)
 
     @property
     def id(self):

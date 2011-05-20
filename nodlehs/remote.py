@@ -158,7 +158,6 @@ class Syncer(threading.Thread):
         super(Syncer, self).__init__()
         self.daemon = True
         self.name = "Syncer for %s" % self.storage.path
-        self.start()
 
     def run(self):
         while True:
