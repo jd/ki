@@ -63,7 +63,7 @@ class TestStorage(TestUsingStorage):
     def test_Storage_get_box(self):
         self.assertRaises(NoRecord, self.storage.get_box, "bla")
 
-    def test_Storage_sync(self):
+    def test_Storage_push(self):
         s2 = self.make_temp_storage()
         s3 = self.make_temp_storage()
         self.storage.AddRemote("s2", s2.path, 100)
@@ -71,6 +71,7 @@ class TestStorage(TestUsingStorage):
 
         self.storage.push()
         box2 = s2.get_box("master")
+        s2.update_from_remotes()
         self.assert_(box2.head == self.box.head)
 
         # add a file
@@ -78,19 +79,42 @@ class TestStorage(TestUsingStorage):
         self.box.root["a"] = (stat.S_IFREG, f)
         self.box.Commit()
 
-        print self.box.head
-        print box2.head
-
-        self.storage.must_be_sync.set()
-        time.sleep(2)
-        s2.must_be_sync.set()
-        time.sleep(2)
+        self.storage.push()
+        s2.update_from_remotes()
         self.assert_(self.box.head == box2.head)
         self.assert_(self.box.head == s2.get_box("master").head)
 
         # Check blobs have been pushed also
         self.assert_(s2.refs.as_dict("refs/blobs").has_key(f.id()))
         self.assert_(s3.refs.as_dict("refs/blobs").has_key(f.id()))
+
+        shutil.rmtree(s2.path)
+        shutil.rmtree(s3.path)
+
+    def test_Storage_fetch(self):
+        s1 = self.make_temp_storage()
+        s2 = self.make_temp_storage()
+        s1.AddRemote("s2", s2.path, 100)
+        box1 = s1.get_box("master", create=True)
+
+        s1.push()
+        box2 = s2.get_box("master")
+        s2.update_from_remotes()
+        self.assert_(box2.head == box1.head)
+
+        # add a file
+        f = File(s2)
+        box2.root["a"] = (stat.S_IFREG, f)
+        box2.Commit()
+
+        s1.fetch()
+        s1.update_from_remotes()
+        self.assert_(box1.head == box2.head)
+
+        # Check blobs have been pushed also
+        s1.fetch_blobs()
+        self.assert_(s1.refs.as_dict("refs/blobs").has_key(f.id()))
+        self.assert_(s2.refs.as_dict("refs/blobs").has_key(f.id()))
 
         shutil.rmtree(s2.path)
         shutil.rmtree(s3.path)
