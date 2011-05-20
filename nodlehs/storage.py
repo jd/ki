@@ -27,7 +27,7 @@ from .commiter import TimeCommiter
 from .fs import NodlehsFuse
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
-from dulwich.objects import Commit
+from dulwich.objects import Commit, Blob
 import os
 import uuid
 import xdg.BaseDirectory
