@@ -22,6 +22,7 @@ import threading
 from .config import Configurable, Config, BUS_INTERFACE
 from .objects import File
 from dulwich.client import get_transport_and_path
+from dulwich.errors import HangupException
 import dbus.service
 import uuid
 
@@ -167,10 +168,19 @@ class Syncer(threading.Thread):
             self.storage.must_be_sync.clear()
             print "END WAIT"
             print "PUSH"
-            self.storage.push()
+            try:
+                self.storage.push()
+            except HangupException as e:
+                print "> Unable to push: %s" % str(e)
             print "FETCH"
-            self.storage.fetch()
-            self.storage.fetch_blobs()
+            try:
+                self.storage.fetch()
+            except HangupException as e:
+                print "> Unable to fetch: %s" % str(e)
+            try:
+                self.storage.fetch_blobs()
+            except HangupException as e:
+                print "> Unable to fetch blobs: %s" % str(e)
             print "UPDATE FROM REMOTES"
             self.storage.update_from_remotes()
 
