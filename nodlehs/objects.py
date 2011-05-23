@@ -537,25 +537,13 @@ class Record(Storable):
         # Ask to send every blob of every missing commits
         return dict([ ("refs/blobs/%s" % blob, blob) for blob in blobs ])
 
-    def blobs_list_dict(self, blobs):
-        """Return a dict mapping every blob to its ref if it is locally stored.
-        That means that the returned dict will have
-
-          { "refs/blobs/<blob>": "<blob>" }
-
-        set if "refs/blobs/<blob>" locally exists. Avoiding trying to push
-        blobs we do not store."""
-        return dict([ ("refs/blobs/%s" % blob, blob) \
-                          for blob in blobs \
-                          if self.storage.refs.as_dict("refs/blobs").has_key(blob) ])
-
     def determine_blobs(self):
-        """Return a dict valid to be used as a reference dict in determine wants for remote push."""
+        """Return a list of all blobs referenced by this record."""
         # Merge all records
         records = reduce(set.union, self.history())
         # Add self to history!
         records.add(self)
-        return self.blobs_list_dict(self.records_blob_list(records))
+        return self.records_blob_list(records)
 
     def find_common_ancestors(self, other):
         """Find the first common ancestors with another Record.

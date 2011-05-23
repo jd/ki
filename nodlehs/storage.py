@@ -140,6 +140,17 @@ class Storage(Repo, dbus.service.Object, Configurable):
         This return the list of refs matching boxes and remotes."""
         return dict([ (ref, sha) for ref, sha in refs.iteritems()
                       if ref.startswith("refs/heads/") or ref.startswith("refs/remotes/") ])
+    @staticmethod
+    def blobs_list_dict(blobs):
+        """Return a dict mapping every blob to its ref if it is locally stored.
+        That means that the returned dict will have
+
+          { "refs/blobs/<blob>": "<blob>" }
+
+        set if "refs/blobs/<blob>" locally exists. Avoiding trying to push
+        blobs we do not store."""
+        return dict([ ("refs/blobs/%s" % blob, blob) \
+                          for blob in blobs ])
 
     def push(self):
         """Push all boxes to all remotes."""
@@ -148,13 +159,22 @@ class Storage(Repo, dbus.service.Object, Configurable):
                 """Determine wants for a remote having refs.
                 Return a dict { ref: sha } used to update the remote when pushing."""
                 newrefs = oldrefs.copy()
+
+                def blob_filter(blob):
+                    return self.refs.as_dict("refs/blobs").has_key(blob)
+
                 for branch_name, head in self.refs.as_dict("refs/remotes").iteritems():
                     newrefs["refs/remotes/%s" % branch_name] = head
                     # XXX implements and use history(Ndays)
-                    newrefs.update(Record(self, head).determine_blobs())
+                    newrefs.update(self.blobs_list_dict(filter(lambda blob:
+                                                                   self.refs.as_dict("refs/blobs").has_key(blob),
+                                                               Record(self, head).determine_blobs())))
                 for branch_name, head in self.refs.as_dict("refs/heads").iteritems():
                     newrefs["refs/remotes/%s/%s" % (self.id, branch_name)] = head
-                    newrefs.update(Record(self, head).determine_blobs())
+                    newrefs.update(self.blobs_list_dict(filter(lambda blob:
+                                                                   self.refs.as_dict("refs/blobs").has_key(blob),
+                                                               Record(self, head).determine_blobs())))
+
                 return newrefs
 
             try:
@@ -175,7 +195,7 @@ class Storage(Repo, dbus.service.Object, Configurable):
         """Fetch all needed blobs."""
         for refbase in [ "refs/heads", "refs/remotes" ]:
             for head in self.refs.as_dict(refbase).itervalues():
-                for blob in Record(self, head).determine_blobs().itervalues():
+                for blob in self.blobs_list_dict(Record(self, head).determine_blobs()).itervalues():
                     self[blob]
 
     def update_from_remotes(self):
