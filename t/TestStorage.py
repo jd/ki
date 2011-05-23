@@ -101,8 +101,8 @@ class TestStorage(TestUsingStorage):
         self.assert_(s1.refs.as_dict("refs/blobs").has_key(f.id()))
         self.assert_(s2.refs.as_dict("refs/blobs").has_key(f.id()))
 
+        shutil.rmtree(s1.path)
         shutil.rmtree(s2.path)
-        shutil.rmtree(s3.path)
 
     def test_Box_root(self):
         self.assert_(self.box.root is not None)
