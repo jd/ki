@@ -107,13 +107,9 @@ def box_commit(name, **kwargs):
     bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).Commit()
 
 
-def box_list(include_remotes, **kwargs):
-    if include_remotes:
-        for box in storage.ListRemoteBoxes():
-            print box
-    else:
-        for box in storage.ListBoxes():
-            print box
+def box_list(**kwargs):
+    for box in storage.ListBoxes():
+        print box
 
 
 def box_mount(name, mountpoint, **kwargs):
@@ -160,7 +156,6 @@ parser_box_commit.add_argument('name', type=str, help='The name of the box to co
 # box list
 parser_box_list = subparsers_box.add_parser('list', help='List existing boxes.')
 parser_box_list.set_defaults(action=box_list)
-parser_box_list.add_argument('-r', '--include-remotes', action='store_true', help='Show remote boxes too.')
 # box mount
 parser_box_mount = subparsers_box.add_parser('mount', help='Mount a box.')
 parser_box_mount.set_defaults(action=box_mount)

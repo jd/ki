@@ -134,12 +134,11 @@ class Storage(Repo, dbus.service.Object, Configurable):
     def init_bare(cls, bus, path):
         return cls._init_maybe_bare(bus, path, True)
 
-    @staticmethod
-    def _fetch_determine_refs(refs):
+    def _fetch_determine_refs(self, refs):
         """Determine what should be fetched based on refs.
-        This return the list of refs matching boxes and remotes."""
+        This return the list of refs matching storages except self."""
         return dict([ (ref, sha) for ref, sha in refs.iteritems()
-                      if ref.startswith("refs/heads/") or ref.startswith("refs/remotes/") ])
+                      if ref.startswith("refs/storages/") and not ref.startswith("refs/storages/%s" % self.id) ])
     @staticmethod
     def blobs_list_dict(blobs):
         """Return a dict mapping every blob to its ref if it is locally stored.
@@ -160,21 +159,14 @@ class Storage(Repo, dbus.service.Object, Configurable):
                 Return a dict { ref: sha } used to update the remote when pushing."""
                 newrefs = oldrefs.copy()
 
-                def blob_filter(blob):
-                    return self.refs.as_dict("refs/blobs").has_key(blob)
-
-                for branch_name, head in self.refs.as_dict("refs/remotes").iteritems():
-                    newrefs["refs/remotes/%s" % branch_name] = head
-                    # XXX implements and use history(Ndays)
-                    newrefs.update(self.blobs_list_dict(filter(lambda blob:
-                                                                   self.refs.as_dict("refs/blobs").has_key(blob),
-                                                               Record(self, head).determine_blobs())))
-                for branch_name, head in self.refs.as_dict("refs/heads").iteritems():
-                    newrefs["refs/remotes/%s/%s" % (self.id, branch_name)] = head
-                    newrefs.update(self.blobs_list_dict(filter(lambda blob:
-                                                                   self.refs.as_dict("refs/blobs").has_key(blob),
-                                                               Record(self, head).determine_blobs())))
-
+                for branch_name, head in self.refs.as_dict("refs/storages").iteritems():
+                    # Do NOT push the storage stuff it's the remote ones!
+                    if branch_name.split('/', 1)[0] != remote.id:
+                        newrefs["refs/storages/%s" % branch_name] = head
+                        # XXX implements and use history(Ndays)
+                        newrefs.update(self.blobs_list_dict(filter(lambda blob:
+                                                                       self.refs.as_dict("refs/blobs").has_key(blob),
+                                                                   Record(self, head).determine_blobs())))
                 return newrefs
 
             try:
@@ -186,17 +178,17 @@ class Storage(Repo, dbus.service.Object, Configurable):
     def fetch(self):
         """Fetch all boxes from all remotes."""
         for remote in self.iterremotes():
-            refs = self._fetch_determine_refs(remote.fetch(lambda refs: None))
+            refs = self._fetch_determine_refs(remote.fetch(lambda refs:
+                                                               self._fetch_determine_refs(refs).values()))
             for ref, sha in refs.iteritems():
-                # Store refs["refs/heads/remotes/REMOTE/BOX"] = sha
-                self.refs[ref.replace("/heads/", "/remotes/%s/" % remote.id, 1)] = sha
+                # Store fetched refs: refs["refs/storages/REMOTE_ID/…"] = sha
+                self.refs[ref] = sha
 
     def fetch_blobs(self):
         """Fetch all needed blobs."""
-        for refbase in [ "refs/heads", "refs/remotes" ]:
-            for head in self.refs.as_dict(refbase).itervalues():
-                for blob in self.blobs_list_dict(Record(self, head).determine_blobs()).itervalues():
-                    self[blob]
+        for head in self.refs.as_dict("refs/storages").itervalues():
+            for blob in self.blobs_list_dict(Record(self, head).determine_blobs()).itervalues():
+                self[blob]
 
     def update_from_remotes(self):
         for box in self._boxes.itervalues():
@@ -250,12 +242,7 @@ class Storage(Repo, dbus.service.Object, Configurable):
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          out_signature='as')
     def ListBoxes(self):
-        return self.refs.as_dict("refs/heads").keys()
-
-    @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
-                         out_signature='as')
-    def ListRemoteBoxes(self):
-        return set([ ref.split('/', 1)[1] for ref in self.refs.as_dict("refs/remotes").keys() ])
+        return set([ ref.split('/', 1)[1] for ref in self.refs.as_dict("refs/storages").keys() ])
 
     @dbus.service.method(dbus_interface="%s.Storage" % BUS_INTERFACE,
                          in_signature='ssi', out_signature='o')
@@ -332,7 +319,7 @@ class Box(threading.Thread, dbus.service.Object):
         """Return the more recent commit for a box on mirrored remotes."""
         try:
             return max([ Record(self.storage, sha) \
-                             for box, sha in self.storage.refs.as_dict("refs/remotes").iteritems() \
+                             for box, sha in self.storage.refs.as_dict("refs/storages").iteritems() \
                              if box.split('/', 1)[1] == self.box_name ])
         except ValueError:
             raise NoRecord
@@ -363,7 +350,7 @@ class Box(threading.Thread, dbus.service.Object):
     @property
     def head(self):
         try:
-            return Record(self.storage, self.storage.refs["refs/heads/%s" % self.box_name])
+            return Record(self.storage, self.storage.refs["refs/storages/%s/%s" % (self.storage.id, self.box_name)])
         except KeyError:
             raise NoRecord
 
@@ -377,14 +364,14 @@ class Box(threading.Thread, dbus.service.Object):
             try:
                 head = self.head
             except NoRecord:
-                self.storage.refs["refs/heads/%s" % self.box_name] = value.store()
+                self.storage.refs["refs/storages/%s/%s" % (self.storage.id, self.box_name)] = value.store()
             else:
                 # Nothing to do (the easy case)
                 if head == value:
                     pass
                 elif value.is_child_of(head):
                     # If it's a child, it's ok
-                    self.storage.refs["refs/heads/%s" % self.box_name] = value.store()
+                    self.storage.refs["refs/storages/%s/%s" % (self.storage.id, self.box_name)] = value.store()
                     self.fuse.fds.clear()
                 elif head.is_child_of(value):
                     # Trying to go back in time?
@@ -397,7 +384,7 @@ class Box(threading.Thread, dbus.service.Object):
                     merge_record.parents.clear()
                     merge_record.parents.append(head)
                     merge_record.merge_commit(value)
-                    self.storage.refs["refs/heads/%s" % self.box_name] = merge_record.store()
+                    self.storage.refs["refs/storages/%s/%s" % (self.storage.id, self.box_name)] = merge_record.store()
                     self.fuse.fds.clear()
                 else:
                     # This is only raised if they got not common ancestor, so
