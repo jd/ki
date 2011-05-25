@@ -94,5 +94,26 @@ class TestUtils(unittest.TestCase):
         self.assertRaises(ValueError, a.index, 0)
         self.assertRaises(NotImplementedError, operator.setitem, a, 3, 6)
 
+        a = SortedList([10, 20, 30])
+        self.assert_(a.index_nearest_left(25) == 2)
+        self.assert_(a.index_nearest_right(25) == 2)
+        self.assert_(a.index_le(25) == 1)
+        self.assert_(a.index_ge(25) == 2)
+        self.assert_(a.index_le(20) == 1)
+        self.assert_(a.index_ge(20) == 1)
+
+    def test_listmmap(self):
+        x = listmmap([ (0, "abc"), (3, "defg"), (7, "hijklm") ])
+        self.assert_(str(x) == "abcdefghijklm")
+        self.assert_(x[1] == "b")
+        self.assert_(x[7] == "h")
+        self.assert_(x[9] == "j")
+        self.assert_(x[12] == "m")
+        self.assert_(x[15] == "")
+        self.assert_(x[1:3] == "bc")
+        self.assert_(x[-1] == "m")
+        self.assert_(x[-10:-1] == "defghijkl")
+
+
 if __name__ == '__main__':
     unittest.main()

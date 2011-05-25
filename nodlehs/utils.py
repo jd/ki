@@ -127,8 +127,8 @@ class SortedList(list):
 
     def __init__(self, iterable=[], key=None):
         self._key = key
-        self._update_keys()
         super(SortedList, self).__init__(sorted(iterable, key=key))
+        self._update_keys()
 
     def _update_keys(self):
         if self._key:
@@ -146,10 +146,12 @@ class SortedList(list):
         self.extend(value)
         return self
 
-    def index(self, object):
-        idx = bisect.bisect_left(self._keys, object)
-        print idx
-        if self[idx] == object:
+    def keys(self):
+        return self._keys
+
+    def index(self, key):
+        idx = bisect.bisect_left(self._keys, key)
+        if self._keys[idx] == key:
             return idx
         raise ValueError
 
@@ -157,10 +159,100 @@ class SortedList(list):
         super(SortedList, self).insert(bisect.bisect(self._keys, object), object)
         self._update_keys()
 
+    def index_nearest_left(self, key):
+        return bisect.bisect_left(self._keys, key)
+
+    def index_nearest_right(self, key):
+        return bisect.bisect_right(self._keys, key)
+
+    def index_le(self, key):
+        """Return the index of the first element lesser or equal to key."""
+        idx = bisect.bisect_left(self._keys, key)
+        if idx < len(self._keys) and self._keys[idx] == key:
+            return idx
+        return idx - 1
+
+    def index_ge(self, key):
+        """Return the index of the first element greater or equal to key."""
+        idx = bisect.bisect_right(self._keys, key)
+        if idx > 0 and self._keys[idx - 1] == key:
+            return idx - 1
+        return idx
+
     def extend(self, iterable):
         for item in iterable:
             self.insert(item)
 
+
+class listmmap(object):
+    """A list handling ranges.
+
+    >>> x = RangeList("a", length=100)
+    >>> x[10] = "b"
+    >>> x[1]
+    a
+    >>> x[42]
+    b
+    >>> x[101]
+    Traceback (most recent call last):
+    File "<stdin>", line 1, in <module>
+    IndexError: list index out of range"""
+
+    def __init__(self, objects):
+        """Create a new listmmap where objects are:
+        [ (offset, object), (offset, object), … ]
+        """
+        self._objects = SortedList(objects, key=self._key_func)
+
+    def __str__(self):
+        return self[:]
+
+    @staticmethod
+    def _key_func(item):
+        return item[0]
+
+    def __len__(self):
+        # Offset of the last object + length of the last object
+        return self._objects[-1][0] + len(self._objects[-1][1])
+
+    def __getitem__(self, key):
+        if not isinstance(key, slice):
+            if key < 0:
+                key += len(self)
+            key = slice(key, key + 1)
+
+        start, stop, step = key.indices(len(self))
+
+        if start == stop:
+            return ""
+
+        # [ (offset, data), …, (offset, data), … ]
+        #                      ^
+        #                      `- index
+
+        index = self._objects.index_le(start)
+        offset, data = self._objects[index]
+
+        try:
+            next_offset, next_data = self._objects[index + 1]
+        except IndexError:
+            # Last element!
+            next_offset = offset + len(data)
+            next_data = ""
+
+        data_start = start - offset
+        data_length = next_offset - offset
+        data_length_available = data_length - data_start
+        length_wanted = stop - start
+        length_to_return = min(data_length_available, length_wanted)
+        left_to_return = length_wanted - length_to_return
+        data_stop = length_to_return + data_start
+
+        # print "return %s[%d:%d:%d] + self[%d:%d:%d]" % \
+        #     (data, data_start, data_stop, step, start + length_to_return, stop, step)
+        # print data[data_start:data_stop:step] + "+ … "
+        return data[data_start:data_stop:step] \
+            + self[start + length_to_return:stop:step]
 
 class SingletonType(type):
     """Singleton metaclass."""
