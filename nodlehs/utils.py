@@ -21,6 +21,7 @@
 import os
 import threading
 import uuid
+import bisect
 
 class Path(object):
     """Magical path object.
@@ -118,6 +119,47 @@ class OrderedSet(list):
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, super(OrderedSet, self).__repr__())
+
+
+class SortedList(list):
+
+    """An ordered list where it's fast to find things using bsearch."""
+
+    def __init__(self, iterable=[], key=None):
+        self._key = key
+        self._update_keys()
+        super(SortedList, self).__init__(sorted(iterable, key=key))
+
+    def _update_keys(self):
+        if self._key:
+            self._keys = [ self._key(item) for item in self ]
+        else:
+            self._keys = self
+
+    def __setslice__(self, i, j):
+        raise NotImplementedError
+
+    def __setitem__(self, i, y):
+        raise NotImplementedError
+
+    def __iadd__(self, value):
+        self.extend(value)
+        return self
+
+    def index(self, object):
+        idx = bisect.bisect_left(self._keys, object)
+        print idx
+        if self[idx] == object:
+            return idx
+        raise ValueError
+
+    def insert(self, object):
+        super(SortedList, self).insert(bisect.bisect(self._keys, object), object)
+        self._update_keys()
+
+    def extend(self, iterable):
+        for item in iterable:
+            self.insert(item)
 
 
 class SingletonType(type):

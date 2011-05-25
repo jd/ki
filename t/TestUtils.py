@@ -2,6 +2,7 @@
 
 import unittest
 import time
+import operator
 from nodlehs.utils import *
 
 class TestUtils(unittest.TestCase):
@@ -77,6 +78,21 @@ class TestUtils(unittest.TestCase):
         self.assert_(s == [ 1, 3, 4, 5, 'hi', 8 ])
         s.clear()
         self.assert_(s == [])
+
+    def test_SortedList(self):
+        a = SortedList()
+        a.insert(1)
+        a.insert(3)
+        a.insert(2)
+        self.assert_(a == [1, 2, 3])
+        self.assert_(a.pop(1) == 2)
+        self.assert_(a == [1, 3])
+        a += [ 2 ]
+        self.assert_(a == [1, 2, 3])
+        self.assert_(a.index(3) == 2)
+        self.assert_(a.index(1) == 0)
+        self.assertRaises(ValueError, a.index, 0)
+        self.assertRaises(NotImplementedError, operator.setitem, a, 3, 6)
 
 if __name__ == '__main__':
     unittest.main()
