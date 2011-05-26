@@ -172,12 +172,18 @@ class SortedList(list):
             return idx
         return idx - 1
 
+    def index_lt(self, key):
+        return bisect.bisect_left(self._keys, key) - 1
+
     def index_ge(self, key):
         """Return the index of the first element greater or equal to key."""
         idx = bisect.bisect_right(self._keys, key)
         if idx > 0 and self._keys[idx - 1] == key:
             return idx - 1
         return idx
+
+    def index_gt(self, key):
+        return bisect.bisect_right(self._keys, key)
 
     def extend(self, iterable):
         for item in iterable:

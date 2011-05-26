@@ -101,6 +101,9 @@ class TestUtils(unittest.TestCase):
         self.assert_(a.index_ge(25) == 2)
         self.assert_(a.index_le(20) == 1)
         self.assert_(a.index_ge(20) == 1)
+        self.assert_(a.index_lt(20) == 0)
+        self.assert_(a.index_gt(20) == 2)
+        self.assert_(a.index_gt(21) == 2)
 
     def test_listmmap(self):
         x = listmmap([ (0, "abc"), (3, "defg"), (7, "hijklm") ])
