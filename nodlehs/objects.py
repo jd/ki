@@ -378,54 +378,6 @@ class Directory(Storable):
             else:
                 raise UnknownChangeType(change)
 
-# class MultiBlobFile(object):
-
-#     def __init__(self, storage, blobs):
-#         # blobs = [ (sha1, offset), (sha1, offset) … ]
-#         self._blobs = sorted(blobs, keys=lambda blob: return blob[1])
-#         self._blobs_keys = [ blob[0] for blob in blobs ]
-#         self._offset = 0
-
-#     def seek(self, offset):
-#         self._offset = offset
-
-#     def read(self, n=-1):
-#         if n == -1:
-#             n = len(self) - self._offset
-
-#         data = ""
-
-#         if n == 0:
-#             return data
-
-#         n = max(len(self) - self._offset, n)
-
-#         # Find current blob for current offset
-#         current_blob_index = bisect(self._blobs_keys, self._offset)
-
-#         while n > 0:
-#             # Get current sha and starting offset
-#             blob_sha, blob_offset = self._blobs[current_blob_index]
-#             next_blob_sha, next_blob_offset = self._blobs[current_blob_index + 1]
-
-#             # Compute current blob length
-#             blob_len = next_blob_offset - blob_offset
-#             # Compute where to start and where to end in the blob's data
-#             start = self._offset - blob_offset
-#             end = min(n, blob_len - start)
-
-#             # Add blob's data to the data
-#             data += buffer(self.storage[blob_sha].data, start, end)
-
-#             # Decrements what is left to read, and increment the blob index
-#             n -= end - start
-#             current_blob_index += 1
-
-#         return data
-
-#     def write(self, data):
-#         pass
-
 
 class File(Storable):
     """A file."""

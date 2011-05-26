@@ -139,8 +139,15 @@ class SortedList(list):
     def __setslice__(self, i, j):
         raise NotImplementedError
 
-    def __setitem__(self, i, y):
-        raise NotImplementedError
+    def __setitem__(self, i, value):
+        if i > 0 and value < self[i - 1]:
+            raise ValueError("value is lesser than the previous item")
+        try:
+            if value > self[i + 1]:
+                raise ValueError("value is greater than the next item")
+        except IndexError:
+            pass
+        return super(SortedList, self).__setitem__(i, value)
 
     def __iadd__(self, value):
         self.extend(value)
@@ -156,7 +163,11 @@ class SortedList(list):
         raise ValueError
 
     def insert(self, object):
-        super(SortedList, self).insert(bisect.bisect(self._keys, object), object)
+        if self._key:
+            key = self._key(object)
+        else:
+            key = object
+        super(SortedList, self).insert(bisect.bisect(self._keys, key), object)
         self._update_keys()
 
     def index_nearest_left(self, key):
@@ -190,25 +201,15 @@ class SortedList(list):
             self.insert(item)
 
 
-class listmmap(object):
-    """A list handling ranges.
-
-    >>> x = RangeList("a", length=100)
-    >>> x[10] = "b"
-    >>> x[1]
-    a
-    >>> x[42]
-    b
-    >>> x[101]
-    Traceback (most recent call last):
-    File "<stdin>", line 1, in <module>
-    IndexError: list index out of range"""
+class ropemmap(object):
 
     def __init__(self, objects):
         """Create a new listmmap where objects are:
         [ (offset, object), (offset, object), … ]
         """
         self._objects = SortedList(objects, key=self._key_func)
+        if self._objects and self._objects[0][0] != 0:
+            raise ValueError("first object must be at offset 0")
 
     def __str__(self):
         return self[:]
@@ -220,6 +221,49 @@ class listmmap(object):
     def __len__(self):
         # Offset of the last object + length of the last object
         return self._objects[-1][0] + len(self._objects[-1][1])
+
+    def __delitem__(self, key):
+        raise NotImplementedError
+
+    def __setitem__(self, start, value):
+        if not isinstance(start, int):
+            raise ValueError("key must be int")
+
+        stop = start + len(value)
+
+        if start == stop:
+            return
+
+        first_block_index = self._objects.index_le(start)
+        last_block_index = self._objects.index_le(stop)
+
+        if first_block_index == last_block_index:
+            block_offset, block = self._objects[first_block_index]
+            self._objects[first_block_index] = (block_offset,
+                                                block[:start] + value + block[stop:])
+        else:
+            first_block_offset, first_block = self._objects[first_block_index]
+            last_block_offset, last_block = self._objects[last_block_index]
+
+            # Delete block between them
+            if last_block_index - first_block_offset > 1:
+                del self._objects[first_block_index + 1:last_block_index]
+
+            # Truncate the first block end
+            if start == first_block_offset:
+                del self._objects[first_block_index]
+                first_block_index -= 1
+            else:
+                self._objects[first_block_index] = (first_block_offset, first_block[:start - first_block_offset])
+
+            # Truncate the last block start
+            if stop >= last_block_offset + len(last_block):
+                del self._objects[first_block_index + 1]
+            else:
+                self._objects[last_block_index] = (stop, last_block[stop - last_block_offset:])
+
+            # Insert the value with its offset
+            self._objects.insert((start, value))
 
     def __getitem__(self, key):
         if not isinstance(key, slice):
@@ -251,7 +295,6 @@ class listmmap(object):
         data_length_available = data_length - data_start
         length_wanted = stop - start
         length_to_return = min(data_length_available, length_wanted)
-        left_to_return = length_wanted - length_to_return
         data_stop = length_to_return + data_start
 
         # print "return %s[%d:%d:%d] + self[%d:%d:%d]" % \

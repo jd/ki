@@ -92,7 +92,6 @@ class TestUtils(unittest.TestCase):
         self.assert_(a.index(3) == 2)
         self.assert_(a.index(1) == 0)
         self.assertRaises(ValueError, a.index, 0)
-        self.assertRaises(NotImplementedError, operator.setitem, a, 3, 6)
 
         a = SortedList([10, 20, 30])
         self.assert_(a.index_nearest_left(25) == 2)
@@ -105,8 +104,8 @@ class TestUtils(unittest.TestCase):
         self.assert_(a.index_gt(20) == 2)
         self.assert_(a.index_gt(21) == 2)
 
-    def test_listmmap(self):
-        x = listmmap([ (0, "abc"), (3, "defg"), (7, "hijklm") ])
+    def test_ropemmap(self):
+        x = ropemmap([ (0, "abc"), (3, "defg"), (7, "hijklm") ])
         self.assert_(str(x) == "abcdefghijklm")
         self.assert_(x[1] == "b")
         self.assert_(x[7] == "h")
@@ -116,6 +115,17 @@ class TestUtils(unittest.TestCase):
         self.assert_(x[1:3] == "bc")
         self.assert_(x[-1] == "m")
         self.assert_(x[-10:-1] == "defghijkl")
+        x[1] = "z"
+        self.assert_(x[1] == "z")
+        self.assert_(str(x) == "azcdefghijklm")
+        x[2] = "123"
+        self.assert_(x[4] == "3")
+        self.assert_(str(x) == "az123fghijklm")
+        x[0] = "helloworldihasoverwrittenyou"
+        self.assert_(str(x) == "helloworldihasoverwrittenyou")
+        x[3] = "123345"
+        self.assert_(str(x) == "hel123345dihasoverwrittenyou")
+        self.assert_(len(x) == len("hel123345dihasoverwrittenyou"))
 
 
 if __name__ == '__main__':
