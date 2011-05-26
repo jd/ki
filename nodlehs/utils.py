@@ -211,7 +211,7 @@ class ropemmap(object):
     (seek, read, write)."""
 
     def __init__(self, objects):
-        """Create a new listmmap where objects are:
+        """Create a new ropemmap where objects are:
         [ (offset, object), (offset, object), … ]
         """
         self._objects = SortedList(objects, key=self._key_func)
