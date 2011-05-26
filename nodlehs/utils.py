@@ -203,6 +203,13 @@ class SortedList(list):
 
 class ropemmap(object):
 
+    """An implementation of a sort of rope data structure.
+    Instead of using a binary tree, this implementation uses a sorted array,
+    using binary search to find the interesting block, staying O(log n) for
+    such an operation.
+    It supports bot list interface (getitem, setitem) and file interface
+    (seek, read, write)."""
+
     def __init__(self, objects):
         """Create a new listmmap where objects are:
         [ (offset, object), (offset, object), … ]
