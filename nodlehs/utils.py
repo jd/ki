@@ -210,6 +210,39 @@ class ropemmap(object):
         self._objects = SortedList(objects, key=self._key_func)
         if self._objects and self._objects[0][0] != 0:
             raise ValueError("first object must be at offset 0")
+        self._offset = 0
+
+    def seek(self, offset, whence=0):
+        if whence == 0:
+            self._offset = offset
+        elif whence == 1:
+            self._offset += offset
+        elif whence == 2:
+            self._offset = len(self) + offset
+
+    def tell(self):
+        return self._offset
+
+    def truncate(size=None):
+        if size == None:
+            size = self._offset
+
+        block_index = self._objects.index_le(size)
+        block_offset, block = self._objects[block_index]
+        if size == block_offset:
+            del self._objects[block_index]
+        else:
+            self._objects[block_index] = (block_offset, block[:size - block_offset])
+
+    def write(self, s):
+        self[self._offset] = s
+
+    def read(self, size=None):
+        if size != None:
+            size += self._offset
+        read = self[self._offset:size]
+        self._offset = min(size, len(self))
+        return read
 
     def __str__(self):
         return self[:]
@@ -238,9 +271,9 @@ class ropemmap(object):
         last_block_index = self._objects.index_le(stop)
 
         if first_block_index == last_block_index:
-            block_offset, block = self._objects[first_block_index]
-            self._objects[first_block_index] = (block_offset,
-                                                block[:start] + value + block[stop:])
+            offset, block = self._objects[first_block_index]
+            self._objects[first_block_index] = \
+                (offset, block[:start - offset] + value + block[stop - offset:])
         else:
             first_block_offset, first_block = self._objects[first_block_index]
             last_block_offset, last_block = self._objects[last_block_index]
@@ -297,9 +330,6 @@ class ropemmap(object):
         length_to_return = min(data_length_available, length_wanted)
         data_stop = length_to_return + data_start
 
-        # print "return %s[%d:%d:%d] + self[%d:%d:%d]" % \
-        #     (data, data_start, data_stop, step, start + length_to_return, stop, step)
-        # print data[data_start:data_stop:step] + "+ … "
         return data[data_start:data_stop:step] \
             + self[start + length_to_return:stop:step]
 

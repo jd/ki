@@ -104,7 +104,7 @@ class TestUtils(unittest.TestCase):
         self.assert_(a.index_gt(20) == 2)
         self.assert_(a.index_gt(21) == 2)
 
-    def test_ropemmap(self):
+    def test_ropemmap_list(self):
         x = ropemmap([ (0, "abc"), (3, "defg"), (7, "hijklm") ])
         self.assert_(str(x) == "abcdefghijklm")
         self.assert_(x[1] == "b")
@@ -126,6 +126,18 @@ class TestUtils(unittest.TestCase):
         x[3] = "123345"
         self.assert_(str(x) == "hel123345dihasoverwrittenyou")
         self.assert_(len(x) == len("hel123345dihasoverwrittenyou"))
+
+    def test_ropemmap_file(self):
+        x = ropemmap([ (0, "abc"), (3, "defg"), (7, "hijklm") ])
+        x.seek(3)
+        self.assert_(x.tell() == 3)
+        x.seek(3, 1)
+        self.assert_(x.tell() == 6)
+        self.assert_(x.read(4) == "ghij")
+        x.write("FOO")
+        self.assert_(str(x) == "abcdefghijFOO")
+        x.seek(1)
+        self.assert_(str(x.read()) == "bcdefghijFOO")
 
 
 if __name__ == '__main__':
