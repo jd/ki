@@ -127,6 +127,10 @@ class TestUtils(unittest.TestCase):
         self.assert_(str(x) == "hel123345dihasoverwrittenyou")
         self.assert_(len(x) == len("hel123345dihasoverwrittenyou"))
 
+        x = lrope([])
+        x[0] = "bonjour"
+
+
     def test_lrope_file(self):
         x = lrope.create_unknown_size([ "abc", "defg", "hijklm" ])
         x.seek(3)

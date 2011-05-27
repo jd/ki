@@ -22,6 +22,7 @@ import os
 import threading
 import uuid
 import bisect
+import collections
 
 class Path(object):
     """Magical path object.
@@ -201,7 +202,7 @@ class SortedList(list):
             self.insert(item)
 
 
-class lrope(object):
+class lrope(collections.MutableSequence):
 
     """An implementation of the rope data structure using a list.
     Instead of using a binary tree, this implementation uses a sorted array,
@@ -210,15 +211,19 @@ class lrope(object):
     It supports both list interface (getitem, setitem) and file interface
     (seek, read, write)."""
 
-    def __init__(self, objects):
+    def __init__(self, objects=[]):
         """Create a new lrope based on a list of objects.
         Format of the list must be:
         [ (size, object), (size, object), … ]"""
-        objects_offset = []
         offset = 0
-        for size, object in objects:
-            objects_offset.append((offset, object))
-            offset += size
+        # If objects is empty
+        if len(objects) == 0:
+            objects_offset = [ (0, '') ]
+        else:
+            objects_offset = []
+            for size, object in objects:
+                objects_offset.append((offset, object))
+                offset += size
 
         self._length = offset
 
@@ -229,6 +234,9 @@ class lrope(object):
     def create_unknown_size(cls, objects):
         """Create a rope based on a list of objects where length has not been precomputed."""
         return cls([ (len(o), o) for o in objects ] )
+
+    def __iter__(self):
+        return iter(self._objects)
 
     def seek(self, offset, whence=0):
         if whence == 0:
@@ -261,6 +269,9 @@ class lrope(object):
         read = self[self._offset:size]
         self._offset = min(size, len(self))
         return read
+
+    def insert(self, index, object):
+        self[index] = object
 
     def __str__(self):
         return self[:]
