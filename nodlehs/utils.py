@@ -227,7 +227,7 @@ class lrope(collections.MutableSequence):
 
         self._length = offset
 
-        self._objects = SortedList(objects_offset, key=self._key_func)
+        self._blocks = SortedList(objects_offset, key=self._key_func)
         self._offset = 0 # Used by file interface
 
     @classmethod
@@ -236,7 +236,7 @@ class lrope(collections.MutableSequence):
         return cls([ (len(o), o) for o in objects ] )
 
     def __iter__(self):
-        return iter(self._objects)
+        return iter(self)
 
     def seek(self, offset, whence=0):
         if whence == 0:
@@ -253,12 +253,12 @@ class lrope(collections.MutableSequence):
         if size == None:
             size = self._offset
 
-        block_index = self._objects.index_le(size)
-        block_offset, block = self._objects[block_index]
+        block_index = self._blocks.index_le(size)
+        block_offset, block = self._blocks[block_index]
         if size == block_offset:
-            del self._objects[block_index]
+            del self._blocks[block_index]
         else:
-            self._objects[block_index] = (block_offset, block[:size - block_offset])
+            self._blocks[block_index] = (block_offset, block[:size - block_offset])
 
     def write(self, s):
         self[self._offset] = s
@@ -295,46 +295,46 @@ class lrope(collections.MutableSequence):
         if start == stop:
             return
 
-        first_block_index = self._objects.index_le(start)
-        last_block_index = self._objects.index_le(stop - 1)
+        first_block_index = self._blocks.index_le(start)
+        last_block_index = self._blocks.index_le(stop - 1)
 
         # The len(self) only changes if we modify the last block
-        if last_block_index == len(self._objects) - 1:
+        if last_block_index == len(self._blocks) - 1:
             size_may_have_changed = True
         else:
             size_may_have_changed = False
 
         if first_block_index == last_block_index:
-            offset, block = self._objects[first_block_index]
-            self._objects[first_block_index] = \
+            offset, block = self._blocks[first_block_index]
+            self._blocks[first_block_index] = \
                 (offset, block[:start - offset] + value + block[stop - offset:])
         else:
-            first_block_offset, first_block = self._objects[first_block_index]
-            last_block_offset, last_block = self._objects[last_block_index]
+            first_block_offset, first_block = self._blocks[first_block_index]
+            last_block_offset, last_block = self._blocks[last_block_index]
 
             # Delete block between them
             if last_block_index - first_block_offset > 1:
-                del self._objects[first_block_index + 1:last_block_index]
+                del self._blocks[first_block_index + 1:last_block_index]
 
             # Truncate the first block end
             if start == first_block_offset:
-                del self._objects[first_block_index]
+                del self._blocks[first_block_index]
                 first_block_index -= 1
             else:
-                self._objects[first_block_index] = (first_block_offset, first_block[:start - first_block_offset])
+                self._blocks[first_block_index] = (first_block_offset, first_block[:start - first_block_offset])
 
             # Truncate the last block start
             if stop >= last_block_offset + len(last_block):
-                del self._objects[first_block_index + 1]
+                del self._blocks[first_block_index + 1]
             else:
-                self._objects[last_block_index] = (stop, last_block[stop - last_block_offset:])
+                self._blocks[last_block_index] = (stop, last_block[stop - last_block_offset:])
 
             # Insert the value with its offset
-            self._objects.insert((start, value))
+            self._blocks.insert((start, value))
 
         # The len(self) only changes if we modified the last block
         if size_may_have_changed:
-            offset, block = self._objects[len(self._objects) - 1]
+            offset, block = self._blocks[len(self._blocks) - 1]
             self._length = offset + len(block)
 
     def __getitem__(self, key):
@@ -352,11 +352,11 @@ class lrope(collections.MutableSequence):
         #                      ^
         #                      `- index
 
-        index = self._objects.index_le(start)
-        offset, data = self._objects[index]
+        index = self._blocks.index_le(start)
+        offset, data = self._blocks[index]
 
         try:
-            next_offset, next_data = self._objects[index + 1]
+            next_offset, next_data = self._blocks[index + 1]
         except IndexError:
             # Last element!
             next_offset = offset + len(data)
@@ -371,6 +371,10 @@ class lrope(collections.MutableSequence):
 
         return data[data_start:data_stop:step] \
             + self[start + length_to_return:stop:step]
+
+    @property
+    def blocks(self):
+        return self._blocks
 
 
 class lmolrope(lrope):
