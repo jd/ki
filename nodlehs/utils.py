@@ -207,17 +207,28 @@ class lrope(object):
     Instead of using a binary tree, this implementation uses a sorted array,
     using binary search to find the interesting block, staying O(log n) for
     such an operation.
-    It supports bot list interface (getitem, setitem) and file interface
+    It supports both list interface (getitem, setitem) and file interface
     (seek, read, write)."""
 
     def __init__(self, objects):
-        """Create a new lrope where objects are:
-        [ (offset, object), (offset, object), … ]
-        """
-        self._objects = SortedList(objects, key=self._key_func)
-        if self._objects and self._objects[0][0] != 0:
-            raise ValueError("first object must be at offset 0")
-        self._offset = 0
+        """Create a new lrope based on a list of objects.
+        Format of the list must be:
+        [ (size, object), (size, object), … ]"""
+        objects_offset = []
+        offset = 0
+        for size, object in objects:
+            objects_offset.append((offset, object))
+            offset += size
+
+        self._length = offset
+
+        self._objects = SortedList(objects_offset, key=self._key_func)
+        self._offset = 0 # Used by file interface
+
+    @classmethod
+    def create_unknown_size(cls, objects):
+        """Create a rope based on a list of objects where length has not been precomputed."""
+        return cls([ (len(o), o) for o in objects ] )
 
     def seek(self, offset, whence=0):
         if whence == 0:
@@ -259,8 +270,7 @@ class lrope(object):
         return item[0]
 
     def __len__(self):
-        # Offset of the last object + length of the last object
-        return self._objects[-1][0] + len(self._objects[-1][1])
+        return self._length
 
     def __delitem__(self, key):
         raise NotImplementedError
@@ -276,6 +286,12 @@ class lrope(object):
 
         first_block_index = self._objects.index_le(start)
         last_block_index = self._objects.index_le(stop)
+
+        # The len(self) only changes if we modify the last block
+        if last_block_index == len(self._objects) - 1:
+            size_may_have_changed = True
+        else:
+            size_may_have_changed = False
 
         if first_block_index == last_block_index:
             offset, block = self._objects[first_block_index]
@@ -304,6 +320,11 @@ class lrope(object):
 
             # Insert the value with its offset
             self._objects.insert((start, value))
+
+        # The len(self) only changes if we modified the last block
+        if size_may_have_changed:
+            offset, block = self._objects[len(self._objects) - 1]
+            self._length = offset + len(block)
 
     def __getitem__(self, key):
         if not isinstance(key, slice):

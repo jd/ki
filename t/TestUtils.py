@@ -105,7 +105,7 @@ class TestUtils(unittest.TestCase):
         self.assert_(a.index_gt(21) == 2)
 
     def test_lrope_list(self):
-        x = lrope([ (0, "abc"), (3, "defg"), (7, "hijklm") ])
+        x = lrope.create_unknown_size([ "abc", "defg", "hijklm" ])
         self.assert_(str(x) == "abcdefghijklm")
         self.assert_(x[1] == "b")
         self.assert_(x[7] == "h")
@@ -128,7 +128,7 @@ class TestUtils(unittest.TestCase):
         self.assert_(len(x) == len("hel123345dihasoverwrittenyou"))
 
     def test_lrope_file(self):
-        x = lrope([ (0, "abc"), (3, "defg"), (7, "hijklm") ])
+        x = lrope.create_unknown_size([ "abc", "defg", "hijklm" ])
         x.seek(3)
         self.assert_(x.tell() == 3)
         x.seek(3, 1)
