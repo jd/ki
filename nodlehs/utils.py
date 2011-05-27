@@ -201,9 +201,9 @@ class SortedList(list):
             self.insert(item)
 
 
-class ropemmap(object):
+class lrope(object):
 
-    """An implementation of a sort of rope data structure.
+    """An implementation of the rope data structure using a list.
     Instead of using a binary tree, this implementation uses a sorted array,
     using binary search to find the interesting block, staying O(log n) for
     such an operation.
@@ -211,7 +211,7 @@ class ropemmap(object):
     (seek, read, write)."""
 
     def __init__(self, objects):
-        """Create a new ropemmap where objects are:
+        """Create a new lrope where objects are:
         [ (offset, object), (offset, object), … ]
         """
         self._objects = SortedList(objects, key=self._key_func)
