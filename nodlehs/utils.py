@@ -376,6 +376,12 @@ class lrope(collections.MutableSequence):
     def blocks(self):
         return self._blocks
 
+    def block_size_at(self, index):
+        """Return size of block at index."""
+        if index < len(self) - 1:
+            return self._blocks[index + 1][0] - self._blocks[index][0]
+        return self._blocks[index + 1][0] - len(self)
+
 
 class lmolrope(lrope):
     """A lrope class which tracks the lowest modified offset."""
@@ -397,7 +403,7 @@ class lmolrope(lrope):
     @property
     def lmb(self):
         """Lowest modified block."""
-        return self._objects.index_le(self._lmo)
+        return self._blocks.index_le(self._lmo)
 
 
 class SingletonType(type):
