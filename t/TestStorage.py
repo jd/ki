@@ -70,8 +70,8 @@ class TestStorage(TestUsingStorage):
         self.assert_(self.box.head == s2.get_box("master").head)
 
         # Check blobs have been pushed also
-        self.assert_(s2.refs.as_dict("refs/blobs").has_key(f.id()))
-        self.assert_(s3.refs.as_dict("refs/blobs").has_key(f.id()))
+        self.assert_(all(map(s2.refs.as_dict("refs/blobs").has_key, f.blocks)))
+        self.assert_(all(map(s3.refs.as_dict("refs/blobs").has_key, f.blocks)))
 
         shutil.rmtree(s2.path)
         shutil.rmtree(s3.path)
@@ -89,7 +89,8 @@ class TestStorage(TestUsingStorage):
 
         # add a file
         f = File(s2)
-        box2.root["a"] = (stat.S_IFREG, f)
+        f.write("some content")
+        box2.root["a"] = (stat.S_IFREG | 644, f)
         box2.Commit()
 
         s1.fetch()
@@ -98,8 +99,8 @@ class TestStorage(TestUsingStorage):
 
         # Check blobs have been pushed also
         s1.fetch_blobs()
-        self.assert_(s1.refs.as_dict("refs/blobs").has_key(f.id()))
-        self.assert_(s2.refs.as_dict("refs/blobs").has_key(f.id()))
+        self.assert_(all(map(s1.refs.as_dict("refs/blobs").has_key, f.blocks)))
+        self.assert_(all(map(s2.refs.as_dict("refs/blobs").has_key, f.blocks)))
 
         shutil.rmtree(s1.path)
         shutil.rmtree(s2.path)

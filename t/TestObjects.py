@@ -39,7 +39,7 @@ class TestObjects(TestUsingStorage):
 
     def test_make_object(self):
         self.assertRaises(BadObjectType, make_object, self.storage, 0, "")
-        self.assert_(isinstance(make_object(self.storage, S_IFGITLINK, File(self.storage).store()), File))
+        self.assert_(isinstance(make_object(self.storage, stat.S_IFREG, File(self.storage).store()), File))
         self.assert_(isinstance(make_object(self.storage, stat.S_IFDIR, Directory(self.storage).store()), Directory))
         self.assertRaises(BadObjectType, make_object,
                           self.storage, stat.S_IFDIR, File(self.storage).store())
@@ -120,43 +120,45 @@ class TestObjects(TestUsingStorage):
         f2 = File(self.storage)
         f2.write("bla")
         r = Record(self.storage)
-        r.root["a"] = (644, f1)
-        r.root["b/x"] = (644, f2)
+        r.root["a"] = (0100644, f1)
+        r.root["b/x"] = (0100644, f2)
         r2 = Record(self.storage, r)
         f3 = File(self.storage)
         f3.write("blabla")
-        r2.root["z"] = (644, f3)
-        self.assert_(r.records_blob_list(set([ r, r2 ])) == set([ f1.id(), f2.id(), f3.id() ]))
+        r2.root["z"] = (0100644, f3)
+        self.assert_(r.records_blob_list(set([ r, r2 ])) == set([ f1.id(), f2.id(), f3.id() ] \
+                                                                    + f1.blocks + f2.blocks + f3.blocks ))
 
     def test_Directory_list_blobs(self):
         d = Directory(self.storage)
         f1 = File(self.storage)
-        f1.data = "some data"
+        f1.write("some data")
         f2 = File(self.storage)
-        f2.data = "data"
+        f2.write("data")
         f3 = File(self.storage)
-        f3.data = "did I write some data already"
-        d["arf/bla.txt"] = (644, f1)
-        d["arf/kikoo.txt"] = (644, f2)
-        d["arf/bla/bla.txt"] = (644, f3)
+        f3.write("did I write some data already")
+        d["arf/bla.txt"] = (0100644, f1)
+        d["arf/kikoo.txt"] = (0100644, f2)
+        d["arf/bla/bla.txt"] = (0100644, f3)
         self.assert_(len(d.list_blobs()) == 0)
-        self.assert_(d["arf"][1].list_blobs() == set([ f1.id() ]))
-        self.assert_(d["arf/bla"][1].list_blobs() == set([ f3.id() ]))
+        self.assert_(d["arf"][1].list_blobs() == set([ f1.id(), f2.id() ] + f1.blocks + f2.blocks ))
+        self.assert_(d["arf/bla"][1].list_blobs() == set([ f3.id() ] + f3.blocks))
 
     def test_Directory_list_blobs_recursive(self):
         d = Directory(self.storage)
         f1 = File(self.storage)
-        f1.data = "some data"
+        f1.write("some data")
         f2 = File(self.storage)
-        f2.data = "data"
+        f2.write("data")
         f3 = File(self.storage)
-        f3.data = "did I write some data already"
-        d["arf/bla.txt"] = (644, f1)
-        d["arf/kikoo.txt"] = (644, f2)
-        d["arf/toto.txt"] = (644, f3)
-        d["arf/bla/bla.txt"] = (644, f3)
-        d["arf/hep/file.txt"] = (644, f1)
-        self.assert_(d.list_blobs_recursive() == set([ f1.id(), f2.id(), f3.id() ]))
+        f3.write("did I write some data already")
+        d["arf/bla.txt"] = (0100644, f1)
+        d["arf/kikoo.txt"] = (0100644, f2)
+        d["arf/toto.txt"] = (0100644, f3)
+        d["arf/bla/bla.txt"] = (0100644, f3)
+        d["arf/hep/file.txt"] = (0100644, f1)
+        self.assert_(d.list_blobs_recursive() == set([ f1.id(), f2.id(), f3.id() ] \
+                                                         + f1.blocks + f2.blocks + f3.blocks))
 
     def test_Directory_mkdir(self):
         directory = Directory(self.storage)

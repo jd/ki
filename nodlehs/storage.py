@@ -21,7 +21,7 @@
 from .fuse import FUSE
 from .utils import *
 from .config import Configurable, Config, BUS_INTERFACE
-from .objects import Record, File, FetchError
+from .objects import Record, FileBlock, FetchError
 from .remote import Remote, Syncer
 from .commiter import TimeCommiter
 from .fs import NodlehsFuse
@@ -99,10 +99,10 @@ class Storage(Repo, dbus.service.Object, Configurable):
     @property
     def id(self):
         try:
-            return str(self[self.refs[Remote._id_ref]])
+            return str(FileBlock(self, self.refs[Remote._id_ref]))
         except KeyError:
-            f = File(self)
-            f.write(str(uuid.uuid4()))
+            f = FileBlock(self)
+            f.data = str(uuid.uuid4())
             self.refs[Remote._id_ref] = f.store()
             return str(f)
 
@@ -141,15 +141,11 @@ class Storage(Repo, dbus.service.Object, Configurable):
                       if ref.startswith("refs/storages/") and not ref.startswith("refs/storages/%s" % self.id) ])
     @staticmethod
     def blobs_list_dict(blobs):
-        """Return a dict mapping every blob to its ref if it is locally stored.
-        That means that the returned dict will have
+        """Return a dict mapping of every blob to its ref.
+        That means that the returned dict will have the format
 
-          { "refs/blobs/<blob>": "<blob>" }
-
-        set if "refs/blobs/<blob>" locally exists. Avoiding trying to push
-        blobs we do not store."""
-        return dict([ ("refs/blobs/%s" % blob, blob) \
-                          for blob in blobs ])
+          { "refs/blobs/<blob>": "<blob>" }"""
+        return dict([ ("refs/blobs/%s" % blob, blob) for blob in blobs ])
 
     def push(self):
         """Push all boxes to all remotes."""

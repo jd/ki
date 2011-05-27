@@ -20,7 +20,7 @@
 
 import threading
 from .config import Configurable, Config, BUS_INTERFACE
-from .objects import File
+from .objects import FileBlock
 from dulwich.client import get_transport_and_path
 from dulwich.errors import HangupException
 import dbus.service
@@ -75,10 +75,10 @@ class Remote(dbus.service.Object, Configurable):
             return self._id
         except AttributeError:
             try:
-                self._id = str(self.storage[self.refs[Remote._id_ref]])
+                self._id = str(FileBlock(self.storage, self.refs[Remote._id_ref]))
             except KeyError:
-                f = File(self.storage)
-                f.write(str(uuid.uuid4()))
+                f = FileBlock(self.storage)
+                f.data = str(uuid.uuid4())
                 def determine_wants(refs):
                     newrefs = refs.copy()
                     newrefs[Remote._id_ref] = f.store()

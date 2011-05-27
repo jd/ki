@@ -25,7 +25,6 @@ import stat
 import time
 import posix
 from decorator import decorator
-from dulwich.objects import S_ISGITLINK, S_IFGITLINK
 
 from .objects import NotDirectory, NoChild, Directory, File, Symlink, DirectoryEntry, FetchError
 from .utils import Path
@@ -79,11 +78,7 @@ class NodlehsFuse(fuse.Operations):
                 s['st_mtime'] = child.mtime
             except AttributeError:
                 s['st_mtime']= s['st_ctime']
-        if S_ISGITLINK(mode):
-            # Transform gitlinks to files
-            mode &= ~S_IFGITLINK
-            mode |= stat.S_IFREG
-        elif stat.S_ISDIR(mode):
+        if stat.S_ISDIR(mode):
             # Directories have no mode, so set one by default
             # XXX This mode should be a config option?
             mode |= (stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP)

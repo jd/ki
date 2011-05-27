@@ -19,7 +19,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .utils import *
-from dulwich.objects import Blob, Commit, Tree, S_IFGITLINK, S_ISGITLINK, ShaFile
+from .split import split
+from dulwich.objects import Blob, Commit, Tree, ShaFile
 import dulwich.diff_tree as diff_tree
 import stat
 import time
@@ -27,7 +28,7 @@ import socket
 import os
 import pwd
 import collections
-import bisect
+import json
 from .merge import *
 from StringIO import StringIO
 
@@ -60,7 +61,7 @@ class Storable(object):
         self.storage = storage
         if obj is None:
             self._object = self._object_type()
-        elif isinstance(obj, str):
+        elif isinstance(obj, basestring):
             self._object = storage[obj]
             if not isinstance(self._object, self._object_type):
                 raise BadObjectType(self._object)
@@ -78,24 +79,32 @@ class Storable(object):
 
     @property
     def object(self):
-        self._update(Storable.object)
+        self._update(self._update_id)
         return self._object
 
-    def _update(self, update_type):
+    @staticmethod
+    def _update_store(item):
+        return item.store()
+
+    @staticmethod
+    def _update_id(item):
+        return item.id()
+
+    def _update(self, action):
         """Update the internal object."""
         raise NotImplementedError
 
     def store(self):
         """Store object into its storage.
         Return the object SHA1."""
-        self._update(Storable.store)
+        self._update(self._update_store)
         self.storage.object_store.add_object(self._object)
         return self._object.id
 
     def id(self):
         """Return the object SHA1 id.
         Note that this id can changed anytime, since data change all the time."""
-        self._update(Storable.id)
+        self._update(self._update_id)
         return self._object.id
 
     def __len__(self):
@@ -116,7 +125,7 @@ class Storable(object):
 
 def make_object(storage, mode, sha):
     """Make a storage object from an sha."""
-    if S_ISGITLINK(mode):
+    if stat.S_ISREG(mode):
         return File(storage, sha)
     elif stat.S_ISDIR(mode):
         return Directory(storage, sha)
@@ -141,20 +150,19 @@ class Directory(Storable):
         # when we will dump ourselves.
         self.local_tree = {}
 
-    def _update(self, update_type):
+    def _update(self, action):
         for name, (mode, child) in self.local_tree.iteritems():
-            # We store file with the GITLINK property. This is an hack to be
-            # sure git will send us the whole blob when we fetch the tree.
-            if type(child) == File:
-                mode |= S_IFGITLINK
-            if update_type == Storable.store:
-                i = child.store()
-            else:
-                i = child.id()
-            self._object.add(name, int(mode), i)
+            self._object.add(name, int(mode), action(child))
 
     def __iter__(self):
-        return iter(self.object.iteritems())
+        yielded_path = []
+        for path, (mode, child) in self.local_tree.iteritems():
+            yielded_path.append(path)
+            yield path, mode, child
+
+        for path, mode, sha in self._object.iteritems():
+            if path not in yielded_path:
+                yield path, mode, make_object(self.storage, mode, sha)
 
     def __getitem__(self, path):
         """Get the child of that directory that is at path."""
@@ -252,17 +260,23 @@ class Directory(Storable):
 
     def list_blobs(self):
         """Return the list of blobs referenced by this Directory."""
-        return set([ sha for path, mode, sha in self if S_ISGITLINK(mode) ])
+        blobs = set()
+        for path, mode, obj in self:
+            if isinstance(obj, File):
+                blobs.add(obj.id())
+                blobs.update(obj.blocks)
+        return blobs
 
     def list_blobs_recursive(self):
         """Return the list of blobs referenced by this Directory and its
         subdirectories."""
         blobs = set()
-        for path, mode, hexsha in self:
-            if S_ISGITLINK(mode):
-                blobs.add(hexsha)
-            elif stat.S_ISDIR(mode):
-                blobs.update(self[path].item.list_blobs_recursive())
+        for path, mode, obj in self:
+            if isinstance(obj, File):
+                blobs.add(obj.id())
+                blobs.update(obj.blocks)
+            elif isinstance(obj, Directory):
+                blobs.update(obj.list_blobs_recursive())
         return blobs
 
     def merge_tree_changes(self, changes):
@@ -379,6 +393,48 @@ class Directory(Storable):
                 raise UnknownChangeType(change)
 
 
+class FileBlock(Storable):
+    """A file block."""
+
+    _object_type = Blob
+
+    @property
+    def data(self):
+        return self._object.data
+
+    @data.setter
+    def data(self, value):
+        self._object.data = value
+
+    def __str__(self):
+        return str(self._object.data)
+
+    def __getitem__(self, key):
+        return self.object.data[key]
+
+    def _update(self, action):
+        pass
+
+    def store(self):
+        # Store
+        oid = super(FileBlock, self).store()
+        # Generate a tag with the sha1 that points to the sha1
+        # That way, our blob object is not unreachable and cannot be garbage
+        # collected
+        self.storage.refs['refs/blobs/%s' % oid ] = oid
+        return oid
+
+
+class Symlink(FileBlock):
+    """A symlink."""
+
+    def __init__(self, storage, obj=None, target="/"):
+        super(Symlink, self).__init__(storage, obj)
+        self._object.data = target
+
+    target = FileBlock.data
+
+
 class File(Storable):
     """A file."""
 
@@ -386,18 +442,29 @@ class File(Storable):
 
     def __init__(self, storage, obj=None):
         super(File, self).__init__(storage, obj)
-        self._data = StringIO(buffer(self._object.data))
+        if obj is None:
+            self._desc = {"blocks": [] }
+        else:
+            self._desc = json.loads(self._object.data)
+
+        self._data = lmolrope([ (size, FileBlock(self.storage, str(sha))) \
+                                    for size, sha in self._desc["blocks"] ])
+
+    @property
+    def blocks(self):
+        """Get blobs list of this file."""
+        return [ str(entry[1]) for entry in self._desc["blocks"] ]
 
     def __len__(self):
-        return len(self._data.getvalue())
+        return len(self._data)
 
     def __str__(self):
-        return self._data.getvalue()
+        return str(self._data)
 
     def seek(self, offset):
         return self._data.seek(offset)
 
-    def read(self, n=-1):
+    def read(self, n=None):
         return self._data.read(n)
 
     def write(self, data):
@@ -409,40 +476,45 @@ class File(Storable):
         self._data.truncate(size)
         self.mtime = time.time()
 
-    def _update(self, update_type):
-        self._object.set_raw_string(self._data.getvalue())
+    def tell(self):
+        return self._data.tell()
 
-    def store(self):
-        # Store
-        oid = super(File, self).store()
-        # Generate a tag with the sha1 that points to the sha1
-        # That way, our blob object is not unreachable and cannot be garbage
-        # collected
-        self.storage.refs['refs/blobs/%s' % oid ] = oid
-        return oid
+    def _update(self, action):
+        # Copy the unmodified blocks
+        blocks = []
+
+        # Unmodified blocks
+        for i, (offset, block) in enumerate(self._data.blocks[:self._data.lmb]):
+            blocks.append((self._data.block_size_at(i), action(FileBlock(self.storage, block))))
+
+        # Save current position in the rope data stream
+        position = self._data.tell()
+        # Now, seek to where we should restart the rolling,
+        # i.e. the offset of the lowest modified block
+        self._data.seek(self._data.blocks[self._data.lmb][0])
+
+        for block in split(self._data):
+            fb = FileBlock(self.storage)
+            fb.data = str(block)
+            #print "Storing fb %s in storage %s" % (action(fb), self.storage)
+            #print self.storage.refs.as_dict("refs/blobs")
+            blocks.append((len(block), action(fb)))
+
+        # Restore file stream position
+        self._data.seek(position)
+
+        # Reset LMO
+        self._data.reset_lmo()
+
+        self._desc["blocks"] = blocks
+
+        self._object.set_raw_string(json.dumps(self._desc))
 
     def merge(self, base, other):
         """Do a 3-way merge of other using base."""
-        content = merge(self._data.getvalue(), base, other)
+        content = merge(str(self._data), base, other)
         self.truncate(0)
         self.write(content)
-
-
-class Symlink(File):
-    """A symlink."""
-
-    def __init__(self, storage, obj=None, target="/"):
-        super(Symlink, self).__init__(storage, obj)
-        self.write(target)
-
-    @property
-    def target(self):
-        return self._data.getvalue()
-
-    @target.setter
-    def target(self, value):
-        self._data.truncate(0)
-        self._data.write(value)
 
 
 class Record(Storable):
@@ -480,14 +552,10 @@ class Record(Storable):
             self._object.commit_timezone = \
             - time.timezone
 
-    def _update(self, update_type):
+    def _update(self, action):
         """Update commit information."""
-        if update_type == Storable.store:
-            self._object.parents = [ parent.store() for parent in self.parents ]
-            self._object.tree = self.root.store()
-        else:
-            self._object.parents = [ parent.id() for parent in self.parents ]
-            self._object.tree = self.root.id()
+        self._object.parents = [ action(parent) for parent in self.parents ]
+        self._object.tree = action(self.root)
 
     def is_child_of(self, other):
         """Check that this record is a child of another one."""

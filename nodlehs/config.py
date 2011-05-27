@@ -19,13 +19,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import json
-from .objects import File, Storable
+from .objects import FileBlock, Storable
 import dbus.service
 
 BUS_INTERFACE = "org.naquadah.Nodlehs"
 
 
-class Config(File):
+class Config(FileBlock):
     """A configuration based on JSON."""
 
     ref = 'refs/tags/config'
@@ -40,7 +40,7 @@ class Config(File):
         self.on_store = on_store
         if obj is None:
             self._config = self._default_config
-            self._update(Config.__init__)
+            self._update(self._update_id)
         else:
             self._config = json.load(self)
 
@@ -57,8 +57,7 @@ class Config(File):
         self.store()
 
     def _update(self, operation_type):
-        self.truncate(0)
-        json.dump(self._config, self, indent=4)
+        self.data = json.dumps(self._config, indent=4)
         super(Config, self)._update(operation_type)
 
     def store(self):

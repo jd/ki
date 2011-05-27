@@ -249,14 +249,26 @@ class lrope(collections.MutableSequence):
     def tell(self):
         return self._offset
 
-    def truncate(size=None):
-        if size == None:
+    def truncate(self, size=None):
+        if size < 0:
             size = self._offset
+        else:
+            size = min(size, len(self))
 
         block_index = self._blocks.index_le(size)
         block_offset, block = self._blocks[block_index]
+        # We truncate before last block…
+        if block_index != len(self._blocks) - 1:
+            # … so delete all blocks after block_index
+            del self._blocks[block_index + 1:]
+        # Now truncate our block
         if size == block_offset:
-            del self._blocks[block_index]
+            # Check that we are not deleting the first block
+            if block_index == 0:
+                # We are truncating the first block, just reset our blocks
+                self._objects = [ (0, '') ]
+            else:
+                del self._blocks[block_index]
         else:
             self._blocks[block_index] = (block_offset, block[:size - block_offset])
 
@@ -264,10 +276,12 @@ class lrope(collections.MutableSequence):
         self[self._offset] = s
 
     def read(self, size=None):
-        if size != None:
-            size += self._offset
-        read = self[self._offset:size]
-        self._offset = min(size, len(self))
+        if size < 0:
+            end = len(self)
+        else:
+            end = min(self._offset + size, len(self))
+        read = self[self._offset:end]
+        self._offset = end
         return read
 
     def insert(self, index, object):
@@ -390,10 +404,17 @@ class lmolrope(lrope):
         self._lmo = None
         super(lmolrope, self).__init__(objects)
 
+    def _update_lmo(self, offset):
+        if self._lmo is None or offset < self._lmo:
+            self._lmo = offset
+
     def __setitem__(self, key, value):
         super(lmolrope, self).__setitem__(key, value)
-        if self._lmo is None or key < self._lmo:
-            self._lmo = key
+        self._update_lmo(key)
+
+    def truncate(self, size=None):
+        super(lmolrope, self).truncate(size)
+        self._update_lmo(len(self))
 
     @property
     def lmo(self):
@@ -405,6 +426,9 @@ class lmolrope(lrope):
         """Lowest modified block."""
         return self._blocks.index_le(self._lmo)
 
+    def reset_lmo(self):
+        """Reset LMO value."""
+        self._lmo = None
 
 class SingletonType(type):
     """Singleton metaclass."""
