@@ -296,7 +296,7 @@ class lrope(collections.MutableSequence):
             return
 
         first_block_index = self._objects.index_le(start)
-        last_block_index = self._objects.index_le(stop)
+        last_block_index = self._objects.index_le(stop - 1)
 
         # The len(self) only changes if we modify the last block
         if last_block_index == len(self._objects) - 1:
@@ -384,6 +384,16 @@ class lmolrope(lrope):
         super(lmolrope, self).__setitem__(key, value)
         if self._lmo is None or key < self._lmo:
             self._lmo = key
+
+    @property
+    def lmo(self):
+        """Lowest modified offset."""
+        return self._lmo
+
+    @property
+    def lmb(self):
+        """Lowest modified block."""
+        return self._objects.index_le(self._lmo)
 
 
 class SingletonType(type):
