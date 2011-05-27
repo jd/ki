@@ -130,7 +130,6 @@ class TestUtils(unittest.TestCase):
         x = lrope([])
         x[0] = "bonjour"
 
-
     def test_lrope_file(self):
         x = lrope.create_unknown_size([ "abc", "defg", "hijklm" ])
         x.seek(3)
@@ -143,6 +142,10 @@ class TestUtils(unittest.TestCase):
         x.seek(1)
         self.assert_(str(x.read()) == "bcdefghijFOO")
 
+    def test_lmolrope(self):
+        x = lmolrope.create_unknown_size([ "hello", "world" ])
+        x[3] = "hi"
+        self.assert_(x._lmo == 3)
 
 if __name__ == '__main__':
     unittest.main()

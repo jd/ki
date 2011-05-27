@@ -372,6 +372,20 @@ class lrope(collections.MutableSequence):
         return data[data_start:data_stop:step] \
             + self[start + length_to_return:stop:step]
 
+
+class lmolrope(lrope):
+    """A lrope class which tracks the lowest modified offset."""
+
+    def __init__(self, objects=[]):
+        self._lmo = None
+        super(lmolrope, self).__init__(objects)
+
+    def __setitem__(self, key, value):
+        super(lmolrope, self).__setitem__(key, value)
+        if self._lmo is None or key < self._lmo:
+            self._lmo = key
+
+
 class SingletonType(type):
     """Singleton metaclass."""
 
