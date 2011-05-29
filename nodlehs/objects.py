@@ -480,35 +480,37 @@ class File(Storable):
         return self._data.tell()
 
     def _update(self, action):
-        # Copy the unmodified blocks
-        blocks = []
+        # If the data never got modified, do nothing!
+        if self._data.lmo:
+            # Copy the unmodified blocks
+            blocks = []
 
-        # Unmodified blocks
-        for i, (offset, block) in enumerate(self._data.blocks[:self._data.lmb]):
-            blocks.append((self._data.block_size_at(i), action(FileBlock(self.storage, block))))
+            # Unmodified blocks
+            for i, (offset, block) in enumerate(self._data.blocks[:self._data.lmb]):
+                blocks.append((self._data.block_size_at(i), action(FileBlock(self.storage, block))))
 
-        # Save current position in the rope data stream
-        position = self._data.tell()
-        # Now, seek to where we should restart the rolling,
-        # i.e. the offset of the lowest modified block
-        self._data.seek(self._data.blocks[self._data.lmb][0])
+            # Save current position in the rope data stream
+            position = self._data.tell()
+            # Now, seek to where we should restart the rolling,
+            # i.e. the offset of the lowest modified block
+            self._data.seek(self._data.blocks[self._data.lmb][0])
 
-        for block in split(self._data):
-            fb = FileBlock(self.storage)
-            fb.data = str(block)
-            #print "Storing fb %s in storage %s" % (action(fb), self.storage)
-            #print self.storage.refs.as_dict("refs/blobs")
-            blocks.append((len(block), action(fb)))
+            for block in split(self._data):
+                fb = FileBlock(self.storage)
+                fb.data = str(block)
+                #print "Storing fb %s in storage %s" % (action(fb), self.storage)
+                #print self.storage.refs.as_dict("refs/blobs")
+                blocks.append((len(block), action(fb)))
 
-        # Restore file stream position
-        self._data.seek(position)
+            # Restore file stream position
+            self._data.seek(position)
 
-        # Reset LMO
-        self._data.reset_lmo()
+            # Reset LMO
+            self._data.reset_lmo()
 
-        self._desc["blocks"] = blocks
+            self._desc["blocks"] = blocks
 
-        self._object.set_raw_string(json.dumps(self._desc))
+            self._object.set_raw_string(json.dumps(self._desc))
 
     def merge(self, base, other):
         """Do a 3-way merge of other using base."""
