@@ -368,7 +368,7 @@ class Box(threading.Thread, dbus.service.Object):
                 elif value.is_child_of(head):
                     # If it's a child, it's ok
                     self.storage.refs["refs/storages/%s/%s" % (self.storage.id, self.box_name)] = value.store()
-                    self.fuse.fds.clear()
+                    self.fuse.fds.reset()
                 elif head.is_child_of(value):
                     # Trying to go back in time?
                     raise NoPlutoniumInDeLoreanError
@@ -381,7 +381,7 @@ class Box(threading.Thread, dbus.service.Object):
                     merge_record.parents.append(head)
                     merge_record.merge_commit(value)
                     self.storage.refs["refs/storages/%s/%s" % (self.storage.id, self.box_name)] = merge_record.store()
-                    self.fuse.fds.clear()
+                    self.fuse.fds.reset()
                 else:
                     # This is only raised if they got not common ancestor, so
                     # they are totally unrelated. This is abnormal.

@@ -36,6 +36,14 @@ def rw(func, self, *args, **kw):
 
     return func(self, *args, **kw)
 
+class FDStore(dict):
+    """File descriptor storage."""
+
+    def reset(self):
+        """Set all values to None."""
+        for k in self.iterkeys():
+            self[k] = None
+
 
 class NodlehsFuse(fuse.Operations):
     """The Nodlehs file system."""
@@ -43,7 +51,7 @@ class NodlehsFuse(fuse.Operations):
     def __init__(self, box):
         self.start_time = time.time()
         self.box = box
-        self.fds = {}
+        self.fds = FDStore()
         super(NodlehsFuse, self).__init__()
 
     def access(self, path, amode):
@@ -225,7 +233,12 @@ class NodlehsFuse(fuse.Operations):
         if fh is None:
             return self._get_child(path, cls)
         with self.box.head_lock:
-            return self.fds[fh]
+            value = self.fds[fh]
+            if value == None:
+                # That can happens if self.fds has been cleared by a commit in
+                # the meantime.
+                return self._get_child(path, cls)
+            return value
 
     def read(self, path, size, offset, fh=None):
         try:
