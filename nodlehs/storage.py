@@ -28,6 +28,7 @@ from .fs import NodlehsFuse
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
 from dulwich.objects import Commit, Blob
+from dulwich.errors import HangupException
 import os
 import uuid
 import xdg.BaseDirectory
@@ -212,7 +213,7 @@ class Storage(Repo, dbus.service.Object, Configurable):
                     self.refs["refs/blobs/%s" % sha1] = sha1
                 return sha1
             # If fetch failed, continue to next remote
-            except FetchError:
+            except HangupException:
                 pass
         # We were unable to fetch
         raise FetchError(sha1)

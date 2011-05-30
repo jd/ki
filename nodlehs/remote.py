@@ -178,7 +178,7 @@ class Syncer(threading.Thread):
                 print "> Unable to fetch: %s" % str(e)
             try:
                 self.storage.fetch_blobs()
-            except HangupException as e:
+            except FetchError as e:
                 print "> Unable to fetch blobs: %s" % str(e)
             print "UPDATE FROM REMOTES"
             self.storage.update_from_remotes()
