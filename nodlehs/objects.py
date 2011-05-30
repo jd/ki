@@ -481,7 +481,7 @@ class File(Storable):
 
     def _update(self, action):
         # If the data never got modified, do nothing!
-        if self._data.lmo:
+        if self._data.lmo != None:
             # Copy the unmodified blocks
             blocks = []
 

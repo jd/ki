@@ -401,7 +401,9 @@ class lmolrope(lrope):
     """A lrope class which tracks the lowest modified offset."""
 
     def __init__(self, objects=[]):
-        self._lmo = None
+        # Set to 0 so we are sure the file is considered as modified on
+        # creation.
+        self._lmo = 0
         super(lmolrope, self).__init__(objects)
 
     def _update_lmo(self, offset):
