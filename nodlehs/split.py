@@ -31,8 +31,9 @@ except ImportError:
 
 def get_file_block(f):
     block = f.read(BLOB_READ_SIZE)
-    if block:
+    while block:
         yield block
+        block = f.read(BLOB_READ_SIZE)
 
 
 def splitbuf(block):
