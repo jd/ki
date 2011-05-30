@@ -445,13 +445,27 @@ class File(Storable):
 
     def __init__(self, storage, obj=None):
         super(File, self).__init__(storage, obj)
-        if obj is None:
+        if obj is None or len(self._object.data) == 0:
             self._desc = {"blocks": [] }
         else:
             self._desc = json.loads(self._object.data)
+        self._lazy_data = None
+        self.lmo = None
 
-        self._data = lmolrope([ (size, FileBlock(self.storage, str(sha))) \
-                                    for size, sha in self._desc["blocks"] ])
+    @property
+    def _data(self):
+        """Lazy data initializer. We only try to read the data when we have to."""
+        if self._lazy_data == None:
+            try:
+                self._lazy_data =  lrope([ (size, FileBlock(self.storage, str(sha))) \
+                                               for size, sha in self._desc["blocks"] ])
+            except:
+                raise Exception(self._desc)
+        return self._lazy_data
+
+    def _update_lmo(self, offset):
+        if self.lmo is None or offset < self.lmo:
+            self.lmo = offset
 
     @property
     def blocks(self):
@@ -471,12 +485,15 @@ class File(Storable):
         return self._data.read(n)
 
     def write(self, data):
+        offset = self._data.tell()
         self._data.write(data)
         self.mtime = time.time()
+        self._update_lmo(offset)
         return len(data)
 
     def truncate(self, size=None):
         self._data.truncate(size)
+        self._update_lmo(len(self._data))
         self.mtime = time.time()
 
     def tell(self):
@@ -484,19 +501,21 @@ class File(Storable):
 
     def _update(self, action):
         # If the data never got modified, do nothing!
-        if self._data.lmo != None:
+        if self.lmo != None:
             # Copy the unmodified blocks
             blocks = []
 
+            lmb_index = self._data.block_index_for_offset(self.lmo)
+
             # Unmodified blocks
-            for i, (offset, block) in enumerate(self._data.blocks[:self._data.lmb]):
+            for i, (offset, block) in enumerate(self._data.blocks[:lmb_index]):
                 blocks.append((self._data.block_size_at(i), action(FileBlock(self.storage, block))))
 
             # Save current position in the rope data stream
             position = self._data.tell()
             # Now, seek to where we should restart the rolling,
             # i.e. the offset of the lowest modified block
-            self._data.seek(self._data.blocks[self._data.lmb][0])
+            self._data.seek(self._data.blocks[lmb_index][0])
 
             for block in split(self._data):
                 fb = FileBlock(self.storage)
@@ -509,7 +528,7 @@ class File(Storable):
             self._data.seek(position)
 
             # Reset LMO
-            self._data.reset_lmo()
+            self.lmo = None
 
             self._desc["blocks"] = blocks
 

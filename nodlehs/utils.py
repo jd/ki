@@ -396,41 +396,9 @@ class lrope(collections.MutableSequence):
             return self._blocks[index + 1][0] - self._blocks[index][0]
         return self._blocks[index + 1][0] - len(self)
 
+    def block_index_for_offset(self, offset):
+        return self._blocks.index_le(offset)
 
-class lmolrope(lrope):
-    """A lrope class which tracks the lowest modified offset."""
-
-    def __init__(self, objects=[]):
-        # Set to 0 so we are sure the file is considered as modified on
-        # creation.
-        self._lmo = 0
-        super(lmolrope, self).__init__(objects)
-
-    def _update_lmo(self, offset):
-        if self._lmo is None or offset < self._lmo:
-            self._lmo = offset
-
-    def __setitem__(self, key, value):
-        super(lmolrope, self).__setitem__(key, value)
-        self._update_lmo(key)
-
-    def truncate(self, size=None):
-        super(lmolrope, self).truncate(size)
-        self._update_lmo(len(self))
-
-    @property
-    def lmo(self):
-        """Lowest modified offset."""
-        return self._lmo
-
-    @property
-    def lmb(self):
-        """Lowest modified block."""
-        return self._blocks.index_le(self._lmo)
-
-    def reset_lmo(self):
-        """Reset LMO value."""
-        self._lmo = None
 
 class SingletonType(type):
     """Singleton metaclass."""
