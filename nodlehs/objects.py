@@ -68,6 +68,7 @@ class Storable(object):
         elif isinstance(obj, type(self)):
             # Store the object, because if we copy the object and access one
             # of its attribute later without having it stored, it will fail.
+
             self._object = storage[obj.store()]
         elif isinstance(obj, ShaFile):
             self._object = obj
@@ -158,11 +159,11 @@ class Directory(Storable):
         yielded_path = []
         for path, (mode, child) in self.local_tree.iteritems():
             yielded_path.append(path)
-            yield path, mode, child
+            yield path, mode
 
         for path, mode, sha in self._object.iteritems():
             if path not in yielded_path:
-                yield path, mode, make_object(self.storage, mode, sha)
+                yield path, mode
 
     def __getitem__(self, path):
         """Get the child of that directory that is at path."""
@@ -261,7 +262,8 @@ class Directory(Storable):
     def list_blobs(self):
         """Return the list of blobs referenced by this Directory."""
         blobs = set()
-        for path, mode, obj in self:
+        for path, mode in self:
+            obj = self[path].item
             if isinstance(obj, File):
                 blobs.add(obj.id())
                 blobs.update(obj.blocks)
@@ -271,7 +273,8 @@ class Directory(Storable):
         """Return the list of blobs referenced by this Directory and its
         subdirectories."""
         blobs = set()
-        for path, mode, obj in self:
+        for path, mode in self:
+            obj = self[path].item
             if isinstance(obj, File):
                 blobs.add(obj.id())
                 blobs.update(obj.blocks)

@@ -141,8 +141,8 @@ class TestObjects(TestUsingStorage):
         d["arf/kikoo.txt"] = (0100644, f2)
         d["arf/bla/bla.txt"] = (0100644, f3)
         self.assert_(len(d.list_blobs()) == 0)
-        self.assert_(d["arf"][1].list_blobs() == set([ f1.id(), f2.id() ] + f1.blocks + f2.blocks ))
-        self.assert_(d["arf/bla"][1].list_blobs() == set([ f3.id() ] + f3.blocks))
+        self.assert_(d["arf"].item.list_blobs() == set([ f1.id(), f2.id() ] + f1.blocks + f2.blocks ))
+        self.assert_(d["arf/bla"].item.list_blobs() == set([ f3.id() ] + f3.blocks))
 
     def test_Directory_list_blobs_recursive(self):
         d = Directory(self.storage)

@@ -129,7 +129,7 @@ class NodlehsFuse(fuse.Operations):
     def readdir(self, path, fh=None):
         yield '.'
         yield '..'
-        for path, mode, name in self._resolve(path, fh, Directory).item:
+        for path, mode in self._resolve(path, fh, Directory).item:
             yield path
 
     def release(self, path, fh):
