@@ -444,7 +444,7 @@ class File(Storable):
     def __init__(self, storage, obj=None):
         super(File, self).__init__(storage, obj)
         if obj is None or len(self._object.data) == 0:
-            self._desc = {"blocks": [] }
+            self._desc = { "blocks": [] }
         else:
             self._desc = json.loads(self._object.data)
         self._lazy_data = None
@@ -468,7 +468,8 @@ class File(Storable):
     @property
     def blocks(self):
         """Get blobs list of this file."""
-        return [ str(entry[1]) for entry in self._desc["blocks"] ]
+        self._update(self._update_id)
+        return [ v[1] for v in self._desc["blocks"] ]
 
     def __len__(self):
         return len(self._data)
@@ -502,25 +503,25 @@ class File(Storable):
         if self.lmo != None:
             # Copy the unmodified blocks
             blocks = []
-
+            # Lowest modified block index
             lmb_index = self._data.block_index_for_offset(self.lmo)
-
-            # Unmodified blocks
-            for i, (offset, block) in enumerate(self._data.blocks[:lmb_index]):
-                blocks.append((self._data.block_size_at(i), action(FileBlock(self.storage, block))))
 
             # Save current position in the rope data stream
             position = self._data.tell()
-            # Now, seek to where we should restart the rolling,
+            # Seek to where we should restart the rolling,
             # i.e. the offset of the lowest modified block
-            self._data.seek(self._data.blocks[lmb_index][0])
+            offset = self._data.blocks[lmb_index][0]
+            self._data.seek(offset)
 
             for block in split(self._data):
                 fb = FileBlock(self.storage)
                 fb.data = str(block)
-                #print "Storing fb %s in storage %s" % (action(fb), self.storage)
-                #print self.storage.refs.as_dict("refs/blobs")
-                blocks.append((len(block), action(fb)))
+                blocks.append((offset, fb))
+
+            # Delete what we just re-split
+            del self._data.blocks[lmb_index:]
+            # And replace with the new blocks
+            self._data.blocks.extend(blocks)
 
             # Restore file stream position
             self._data.seek(position)
@@ -528,9 +529,11 @@ class File(Storable):
             # Reset LMO
             self.lmo = None
 
-            self._desc["blocks"] = blocks
+        # Replace the FileBlock-s by their id using `action'
+        self._desc["blocks"] = [ (len(block), action(block)) \
+                                     for offset, block in self._data.blocks ]
 
-            self._object.set_raw_string(json.dumps(self._desc))
+        self._object.set_raw_string(json.dumps(self._desc))
 
     def merge(self, base, other):
         """Do a 3-way merge of other using base."""
@@ -624,9 +627,6 @@ class Record(Storable):
         return reduce(set.union, [ record.root.list_blobs_recursive() \
                                        for record in records ],
                       set())
-
-        # Ask to send every blob of every missing commits
-        return dict([ ("refs/blobs/%s" % blob, blob) for blob in blobs ])
 
     def determine_blobs(self):
         """Return a list of all blobs referenced by this record."""
