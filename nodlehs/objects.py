@@ -567,6 +567,10 @@ class Record(Storable):
     def parents(self):
         return self._parents
 
+    @property
+    def commit_time(self):
+        return self._object.commit_time
+
     def update_timestamp(self):
         # XXX maybe checking for root tree items mtime would be better and
         # more accurate?

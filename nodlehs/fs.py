@@ -73,8 +73,7 @@ class NodlehsFuse(fuse.Operations):
         if path == '/':
             s['st_ctime'] = self.start_time
         else:
-            # XXX accessing object is not that good.
-            s['st_ctime'] = self.box.record.object.commit_time
+            s['st_ctime'] = self.box.record.commit_time
         try:
             (mode, child) = self._resolve(path, fh)
         except FetchError as e:
