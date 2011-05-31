@@ -364,29 +364,27 @@ class lrope(collections.MutableSequence):
         if start == stop:
             return ""
 
-        # [ (offset, data), …, (offset, data), … ]
-        #                      ^
-        #                      `- index
-
         index = self._blocks.index_le(start)
-        offset, data = self._blocks[index]
+        data = ""
+        offset, block = self._blocks[index]
+        block_start = start - offset
 
-        try:
-            next_offset, next_data = self._blocks[index + 1]
-        except IndexError:
-            # Last element!
-            next_offset = offset + len(data)
-            next_data = ""
+        while stop > offset:
+            try:
+                next_offset, next_block = self._blocks[index + 1]
+            except IndexError:
+                # Last element!
+                next_offset = offset + len(block)
+                next_block = ""
 
-        data_start = start - offset
-        data_length = next_offset - offset
-        data_length_available = data_length - data_start
-        length_wanted = stop - start
-        length_to_return = min(data_length_available, length_wanted)
-        data_stop = length_to_return + data_start
+            block_end = min(next_offset, stop) - offset
+            data += self._blocks[index][1][block_start:block_end:step]
+            block_start = 0
+            index += 1
+            offset = next_offset
+            block = next_block
 
-        return data[data_start:data_stop:step] \
-            + self[start + length_to_return:stop:step]
+        return data
 
     @property
     def blocks(self):

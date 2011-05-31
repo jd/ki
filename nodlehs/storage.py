@@ -421,7 +421,7 @@ class Box(threading.Thread, dbus.service.Object):
 
     def run(self):
         TimeCommiter(self, 300).start()
-        FUSE(self.fuse, self.mountpoint, debug=True)
+        FUSE(self.fuse, self.mountpoint, nothreads=True, debug=True)
         self.Commit()
 
     @dbus.service.method(dbus_interface="%s.Box" % BUS_INTERFACE,
