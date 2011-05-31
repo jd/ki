@@ -265,7 +265,6 @@ class Directory(Storable):
         for path, mode in self:
             obj = self[path].item
             if isinstance(obj, File):
-                blobs.add(obj.id())
                 blobs.update(obj.blocks)
         return blobs
 
@@ -276,7 +275,6 @@ class Directory(Storable):
         for path, mode in self:
             obj = self[path].item
             if isinstance(obj, File):
-                blobs.add(obj.id())
                 blobs.update(obj.blocks)
             elif isinstance(obj, Directory):
                 blobs.update(obj.list_blobs_recursive())

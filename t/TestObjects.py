@@ -126,8 +126,7 @@ class TestObjects(TestUsingStorage):
         f3 = File(self.storage)
         f3.write("blabla")
         r2.root["z"] = (0100644, f3)
-        self.assert_(r.records_blob_list(set([ r, r2 ])) == set([ f1.id(), f2.id(), f3.id() ] \
-                                                                    + f1.blocks + f2.blocks + f3.blocks ))
+        self.assert_(r.records_blob_list(set([ r, r2 ])) == set(f1.blocks + f2.blocks + f3.blocks ))
 
     def test_Directory_list_blobs(self):
         d = Directory(self.storage)
@@ -141,8 +140,8 @@ class TestObjects(TestUsingStorage):
         d["arf/kikoo.txt"] = (0100644, f2)
         d["arf/bla/bla.txt"] = (0100644, f3)
         self.assert_(len(d.list_blobs()) == 0)
-        self.assert_(d["arf"].item.list_blobs() == set([ f1.id(), f2.id() ] + f1.blocks + f2.blocks ))
-        self.assert_(d["arf/bla"].item.list_blobs() == set([ f3.id() ] + f3.blocks))
+        self.assert_(d["arf"].item.list_blobs() == set(f1.blocks + f2.blocks ))
+        self.assert_(d["arf/bla"].item.list_blobs() == set(f3.blocks))
 
     def test_Directory_list_blobs_recursive(self):
         d = Directory(self.storage)
@@ -157,8 +156,7 @@ class TestObjects(TestUsingStorage):
         d["arf/toto.txt"] = (0100644, f3)
         d["arf/bla/bla.txt"] = (0100644, f3)
         d["arf/hep/file.txt"] = (0100644, f1)
-        self.assert_(d.list_blobs_recursive() == set([ f1.id(), f2.id(), f3.id() ] \
-                                                         + f1.blocks + f2.blocks + f3.blocks))
+        self.assert_(d.list_blobs_recursive() == set(f1.blocks + f2.blocks + f3.blocks))
 
     def test_Directory_mkdir(self):
         directory = Directory(self.storage)
