@@ -454,11 +454,8 @@ class File(Storable):
     def _data(self):
         """Lazy data initializer. We only try to read the data when we have to."""
         if self._lazy_data == None:
-            try:
-                self._lazy_data =  lrope([ (size, FileBlock(self.storage, str(sha))) \
-                                               for size, sha in self._desc["blocks"] ])
-            except:
-                raise Exception(self._desc)
+            self._lazy_data =  lrope([ (size, FileBlock(self.storage, str(sha))) \
+                                           for size, sha in self._desc["blocks"] ])
         return self._lazy_data
 
     def _update_lmo(self, offset):
@@ -506,25 +503,31 @@ class File(Storable):
             # Lowest modified block index
             lmb_index = self._data.block_index_for_offset(self.lmo)
 
-            # Save current position in the rope data stream
-            position = self._data.tell()
-            # Seek to where we should restart the rolling,
-            # i.e. the offset of the lowest modified block
-            offset = self._data.blocks[lmb_index][0]
-            self._data.seek(offset)
+            try:
+                offset = self._data.blocks[lmb_index][0]
+            except IndexError:
+                # File is empty
+                del self._data.blocks[:]
+            else:
+                # Save current position in the rope data stream
+                position = self._data.tell()
+                # Seek to where we should restart the rolling,
+                # i.e. the offset of the lowest modified block
+                self._data.seek(offset)
 
-            for block in split(self._data):
-                fb = FileBlock(self.storage)
-                fb.data = str(block)
-                blocks.append((offset, fb))
+                for block in split(self._data):
+                    fb = FileBlock(self.storage)
+                    fb.data = str(block)
+                    blocks.append((offset, fb))
+                    offset += len(block)
 
-            # Delete what we just re-split
-            del self._data.blocks[lmb_index:]
-            # And replace with the new blocks
-            self._data.blocks.extend(blocks)
+                # Delete what we just re-split
+                del self._data.blocks[lmb_index:]
+                # And replace with the new blocks
+                self._data.blocks.extend(blocks)
 
-            # Restore file stream position
-            self._data.seek(position)
+                # Restore file stream position
+                self._data.seek(position)
 
             # Reset LMO
             self.lmo = None

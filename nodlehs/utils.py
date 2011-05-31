@@ -148,10 +148,16 @@ class SortedList(list):
                 raise ValueError("value is greater than the next item")
         except IndexError:
             pass
-        return super(SortedList, self).__setitem__(i, value)
+        super(SortedList, self).__setitem__(i, value)
+        self._update_keys()
+
+    def __delitem__(self, i):
+        super(SortedList, self).__delitem__(i)
+        self._update_keys()
 
     def __iadd__(self, value):
         self.extend(value)
+        self._update_keys()
         return self
 
     def keys(self):
@@ -255,6 +261,11 @@ class lrope(collections.MutableSequence):
             size = min(size, len(self))
 
         block_index = self._blocks.index_le(size)
+
+        # If file is empty, do nothing
+        if block_index == -1:
+            return
+
         block_offset, block = self._blocks[block_index]
         # We truncate before last block…
         if block_index != len(self._blocks) - 1:
@@ -267,6 +278,7 @@ class lrope(collections.MutableSequence):
             self._blocks[block_index] = (block_offset, block[:size - block_offset])
 
         self._length = size
+        self._offset = min(self._offset, self._length)
 
     def write(self, s):
         self[self._offset] = s
