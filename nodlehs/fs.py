@@ -113,7 +113,7 @@ class NodlehsFuse(fuse.Operations):
                 fd = k[-1] + 1
             except IndexError:
                 fd = 0
-                self.fds[fd] = DirectoryEntry(mode, item)
+            self.fds[fd] = DirectoryEntry(mode, item)
             return fd
 
     def opendir(self, path):
