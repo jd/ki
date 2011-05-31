@@ -163,6 +163,9 @@ class SortedList(list):
             return idx
         raise ValueError
 
+    def append(self, value):
+        raise NotImplementedError
+
     def insert(self, object):
         if self._key:
             key = self._key(object)
@@ -216,14 +219,10 @@ class lrope(collections.MutableSequence):
         Format of the list must be:
         [ (size, object), (size, object), … ]"""
         offset = 0
-        # If objects is empty
-        if len(objects) == 0:
-            objects_offset = [ (0, '') ]
-        else:
-            objects_offset = []
-            for size, object in objects:
-                objects_offset.append((offset, object))
-                offset += size
+        objects_offset = []
+        for size, object in objects:
+            objects_offset.append((offset, object))
+            offset += size
 
         self._length = offset
 
@@ -318,7 +317,10 @@ class lrope(collections.MutableSequence):
         else:
             size_may_have_changed = False
 
-        if first_block_index == last_block_index:
+        if first_block_index == -1:
+            # This happens when the object has been created empty
+            self._blocks.insert((0, value))
+        elif first_block_index == last_block_index:
             offset, block = self._blocks[first_block_index]
             self._blocks[first_block_index] = \
                 (offset, block[:start - offset] + value + block[stop - offset:])
