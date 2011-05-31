@@ -262,14 +262,11 @@ class lrope(collections.MutableSequence):
             del self._blocks[block_index + 1:]
         # Now truncate our block
         if size == block_offset:
-            # Check that we are not deleting the first block
-            if block_index == 0:
-                # We are truncating the first block, just reset our blocks
-                self._objects = [ (0, '') ]
-            else:
-                del self._blocks[block_index]
+            del self._blocks[block_index]
         else:
             self._blocks[block_index] = (block_offset, block[:size - block_offset])
+
+        self._length = size
 
     def write(self, s):
         self[self._offset] = s
