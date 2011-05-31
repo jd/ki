@@ -142,17 +142,5 @@ class TestUtils(unittest.TestCase):
         x.seek(1)
         self.assert_(str(x.read()) == "bcdefghijFOO")
 
-    def test_lmolrope(self):
-        x = lmolrope.create_unknown_size([ "hello", "world" ])
-        x[9] = "hi"
-        self.assert_(x.lmo == 9)
-        self.assert_(x.lmb == 1)
-        x[3] = "bla"
-        self.assert_(x.lmo == 3)
-        self.assert_(x.lmb == 1)
-        x[0] = "abc"
-        self.assert_(x.lmo == 0)
-        self.assert_(x.lmb == 0)
-
 if __name__ == '__main__':
     unittest.main()
