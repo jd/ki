@@ -104,6 +104,9 @@ class TestUtils(unittest.TestCase):
         self.assert_(a.index_gt(20) == 2)
         self.assert_(a.index_gt(21) == 2)
 
+        a.extend([ 30, 12, 9 ])
+        self.assert_(a == [9, 10, 12, 20, 30, 30])
+
     def test_lrope_list(self):
         x = lrope.create_unknown_size([ "abc", "defg", "hijklm" ])
         self.assert_(str(x) == "abcdefghijklm")
