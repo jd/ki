@@ -176,6 +176,7 @@ class Syncer(threading.Thread):
                 self.storage.fetch()
             except HangupException as e:
                 print "> Unable to fetch: %s" % str(e)
+            print "FETCH BLOBS"
             try:
                 self.storage.fetch_blobs()
             except FetchError as e:

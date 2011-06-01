@@ -449,6 +449,7 @@ class File(Storable):
             self._desc = json.loads(self._object.data)
         self._lazy_data = None
         self.lmo = None
+        self.stored = False
 
     @property
     def _data(self):
@@ -532,11 +533,21 @@ class File(Storable):
             # Reset LMO
             self.lmo = None
 
-        # Replace the FileBlock-s by their id using `action'
-        self._desc["blocks"] = [ (len(block), action(block)) \
-                                     for offset, block in self._data.blocks ]
+            # Replace the FileBlock-s by their id using `action'
+            self._desc["blocks"] = [ (len(block), action(block)) \
+                                         for offset, block in self._data.blocks ]
 
-        self._object.set_raw_string(json.dumps(self._desc))
+            self._object.set_raw_string(json.dumps(self._desc))
+
+            self.stored = action == self._update_store
+        elif action == self._update_store and not self.stored:
+
+            # Replace the FileBlock-s by their id using `action'
+            self._desc["blocks"] = [ (len(block), action(block)) \
+                                         for offset, block in self._data.blocks ]
+            self.stored = True
+
+            self._object.set_raw_string(json.dumps(self._desc))
 
     def merge(self, base, other):
         """Do a 3-way merge of other using base."""
