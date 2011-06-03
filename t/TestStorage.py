@@ -89,7 +89,7 @@ class TestStorage(TestUsingStorage):
 
         # add a file
         f = File(s2)
-        f.write("some content")
+        f[:] = "some content"
         box2.root["a"] = (stat.S_IFREG | 644, f)
         box2.Commit()
 

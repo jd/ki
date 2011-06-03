@@ -118,32 +118,20 @@ class TestUtils(unittest.TestCase):
         self.assert_(x[1:3] == "bc")
         self.assert_(x[-1] == "m")
         self.assert_(x[-10:-1] == "defghijkl")
-        x[1] = "z"
+        x[1:2] = "z"
         self.assert_(x[1] == "z")
         self.assert_(str(x) == "azcdefghijklm")
-        x[2] = "123"
-        self.assert_(x[4] == "3")
+        x[2:5] = "123"
         self.assert_(str(x) == "az123fghijklm")
-        x[0] = "helloworldihasoverwrittenyou"
+        x[0:] = "helloworldihasoverwrittenyou"
         self.assert_(str(x) == "helloworldihasoverwrittenyou")
-        x[3] = "123345"
-        self.assert_(str(x) == "hel123345dihasoverwrittenyou")
-        self.assert_(len(x) == len("hel123345dihasoverwrittenyou"))
-
+        x[3:] = "123345"
+        self.assert_(str(x) == "hel123345")
+        self.assert_(len(x) == len("hel123345"))
         x = lrope([])
-        x[0] = "bonjour"
-
-    def test_lrope_file(self):
-        x = lrope.create_unknown_size([ "abc", "defg", "hijklm" ])
-        x.seek(3)
-        self.assert_(x.tell() == 3)
-        x.seek(3, 1)
-        self.assert_(x.tell() == 6)
-        self.assert_(x.read(4) == "ghij")
-        x.write("FOO")
-        self.assert_(str(x) == "abcdefghijFOO")
-        x.seek(1)
-        self.assert_(str(x.read()) == "bcdefghijFOO")
+        x[0:] = "bonjour"
+        del x[3:]
+        self.assert_(str(x) == "bon")
 
 if __name__ == '__main__':
     unittest.main()

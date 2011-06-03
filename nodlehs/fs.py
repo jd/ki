@@ -244,8 +244,7 @@ class NodlehsFuse(fuse.Operations):
             (mode, child) = self._resolve(path, fh, File)
         except FetchError:
             raise fuse.FuseOSError(errno.EIO)
-        child.seek(offset)
-        return child.read(size)
+        return child[offset:offset + size]
 
     @rw
     def write(self, path, data, offset, fh=None):
@@ -253,15 +252,15 @@ class NodlehsFuse(fuse.Operations):
             (mode, child) = self._resolve(path, fh, File)
         except FetchError:
             raise fuse.FuseOSError(errno.EIO)
-        child.seek(offset)
-        return child.write(data)
+        child[offset] = data
 
     @rw
     def truncate(self, path, length, fh=None):
         try:
-            return self._resolve(path, fh, File).item.truncate(length)
+            (mode, child) = self._resolve(path, fh, File)
         except FetchError:
             raise fuse.FuseOSError(errno.EIO)
+        del child[length:]
 
     @rw
     def symlink(self, target, source):

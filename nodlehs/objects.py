@@ -29,8 +29,8 @@ import os
 import pwd
 import collections
 import json
+from cStringIO import StringIO
 from .merge import *
-from StringIO import StringIO
 
 
 class FetchError(Exception):
@@ -467,7 +467,7 @@ class File(Storable):
     def blocks(self):
         """Get blobs list of this file."""
         self._update(self._update_id)
-        return [ v[1] for v in self._desc["blocks"] ]
+        return [ str(v[1]) for v in self._desc["blocks"] ]
 
     def __len__(self):
         return len(self._data)
@@ -475,26 +475,18 @@ class File(Storable):
     def __str__(self):
         return str(self._data)
 
-    def seek(self, offset):
-        return self._data.seek(offset)
+    def __getitem__(self, key):
+        return self._data[key]
 
-    def read(self, n=None):
-        return self._data.read(n)
-
-    def write(self, data):
-        offset = self._data.tell()
-        self._data.write(data)
+    def __setitem__(self, key, value):
+        self._data[key] = value
         self.mtime = time.time()
-        self._update_lmo(offset)
-        return len(data)
+        self._update_lmo(key)
 
-    def truncate(self, size=None):
-        self._data.truncate(size)
-        self._update_lmo(len(self._data))
+    def __delitem__(self, key):
+        del self._data[key]
         self.mtime = time.time()
-
-    def tell(self):
-        return self._data.tell()
+        self._update_lmo(key)
 
     def _update(self, action):
         # If the data never got modified, do nothing!
@@ -510,13 +502,9 @@ class File(Storable):
                 # File is empty
                 del self._data.blocks[:]
             else:
-                # Save current position in the rope data stream
-                position = self._data.tell()
                 # Seek to where we should restart the rolling,
                 # i.e. the offset of the lowest modified block
-                self._data.seek(offset)
-
-                for block in split(self._data):
+                for block in split(StringIO(self._data[offset:])):
                     fb = FileBlock(self.storage)
                     fb.data = str(block)
                     blocks.append((offset, fb))
@@ -526,9 +514,6 @@ class File(Storable):
                 del self._data.blocks[lmb_index:]
                 # And replace with the new blocks
                 self._data.blocks.extend(blocks)
-
-                # Restore file stream position
-                self._data.seek(position)
 
             # Reset LMO
             self.lmo = None
@@ -552,8 +537,8 @@ class File(Storable):
     def merge(self, base, other):
         """Do a 3-way merge of other using base."""
         content = merge(str(self._data), base, other)
-        self.truncate(0)
-        self.write(content)
+        del self[:]
+        self[:] = content
 
 
 class Record(Storable):

@@ -118,24 +118,24 @@ class TestObjects(TestUsingStorage):
     def test_Record_records_blob_list(self):
         f1 = File(self.storage)
         f2 = File(self.storage)
-        f2.write("bla")
+        f2[0] = "bla"
         r = Record(self.storage)
         r.root["a"] = (0100644, f1)
         r.root["b/x"] = (0100644, f2)
         r2 = Record(self.storage, r)
         f3 = File(self.storage)
-        f3.write("blabla")
+        f3[0] = "blabla"
         r2.root["z"] = (0100644, f3)
         self.assert_(r.records_blob_list(set([ r, r2 ])) == set(f1.blocks + f2.blocks + f3.blocks ))
 
     def test_Directory_list_blobs(self):
         d = Directory(self.storage)
         f1 = File(self.storage)
-        f1.write("some data")
+        f1[0] = "some data"
         f2 = File(self.storage)
-        f2.write("data")
+        f2[0] = "data"
         f3 = File(self.storage)
-        f3.write("did I write some data already")
+        f3[0] = "did I write some data already"
         d["arf/bla.txt"] = (0100644, f1)
         d["arf/kikoo.txt"] = (0100644, f2)
         d["arf/bla/bla.txt"] = (0100644, f3)
@@ -146,11 +146,11 @@ class TestObjects(TestUsingStorage):
     def test_Directory_list_blobs_recursive(self):
         d = Directory(self.storage)
         f1 = File(self.storage)
-        f1.write("some data")
+        f1[0] = "some data"
         f2 = File(self.storage)
-        f2.write("data")
+        f2[0] = "data"
         f3 = File(self.storage)
-        f3.write("did I write some data already")
+        f3[0] = "did I write some data already"
         d["arf/bla.txt"] = (0100644, f1)
         d["arf/kikoo.txt"] = (0100644, f2)
         d["arf/toto.txt"] = (0100644, f3)
@@ -184,20 +184,19 @@ class TestObjects(TestUsingStorage):
 
     def test_File_operations(self):
         f = File(self.storage)
-        f.write("abc")
-        f.seek(0)
-        self.assert_(f.read() == "abc")
+        f[0:] = "abc"
+        self.assert_(f[:] == "abc")
         self.assert_(len(f) == 3)
-        f.truncate(0)
-        self.assert_(f.read() == "")
+        del f[:]
+        self.assert_(f[:] == "")
 
     def test_File_merge(self):
         base = File(self.storage)
-        base.write("hello\nworld\nhow are you?\n")
+        base[0] = "hello\nworld\nhow are you?\n"
         f = File(self.storage)
-        f.write("hello\nyou\nhow are you?\n")
+        f[0] = "hello\nyou\nhow are you?\n"
         other = File(self.storage)
-        other.write("hello\nworld\nwhere are you?\n")
+        other[0] = "hello\nworld\nwhere are you?\n"
         self.assertRaises(MergeConflictError, f.merge, str(base), str(other))
 
     def test_Symlink_target(self):

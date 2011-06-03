@@ -129,6 +129,7 @@ class SortedList(list):
     def __init__(self, iterable=[], key=None):
         self._key = key
         super(SortedList, self).__init__(sorted(iterable, key=key))
+        # XXX remove keys, use comparable objects!
         self._update_keys()
 
     def _update_keys(self):
@@ -177,8 +178,16 @@ class SortedList(list):
             key = self._key(object)
         else:
             key = object
-        super(SortedList, self).insert(bisect.bisect(self._keys, key), object)
+        where = self.index_nearest_left(key)
+        super(SortedList, self).insert(where, object)
         self._update_keys()
+        return where
+
+    def insert_at(self, where, value):
+        # XXX check if value is between -1 and +1 items
+        super(SortedList, self).insert(where, value)
+        self._update_keys()
+        return where
 
     def index_nearest_left(self, key):
         return bisect.bisect_left(self._keys, key)
@@ -188,7 +197,7 @@ class SortedList(list):
 
     def index_le(self, key):
         """Return the index of the first element lesser or equal to key."""
-        idx = bisect.bisect_left(self._keys, key)
+        idx = self.index_nearest_left(key)
         if idx < len(self._keys) and self._keys[idx] == key:
             return idx
         return idx - 1
@@ -216,9 +225,7 @@ class lrope(collections.MutableSequence):
     """An implementation of the rope data structure using a list.
     Instead of using a binary tree, this implementation uses a sorted array,
     using binary search to find the interesting block, staying O(log n) for
-    such an operation.
-    It supports both list interface (getitem, setitem) and file interface
-    (seek, read, write)."""
+    such an operation."""
 
     def __init__(self, objects=[]):
         """Create a new lrope based on a list of objects.
@@ -233,7 +240,6 @@ class lrope(collections.MutableSequence):
         self._length = offset
 
         self._blocks = SortedList(objects_offset, key=self._key_func)
-        self._offset = 0 # Used by file interface
 
     @classmethod
     def create_unknown_size(cls, objects):
@@ -242,55 +248,6 @@ class lrope(collections.MutableSequence):
 
     def __iter__(self):
         return iter(self)
-
-    def seek(self, offset, whence=0):
-        if whence == 0:
-            self._offset = offset
-        elif whence == 1:
-            self._offset += offset
-        elif whence == 2:
-            self._offset = len(self) + offset
-
-    def tell(self):
-        return self._offset
-
-    def truncate(self, size=None):
-        if size < 0:
-            size = self._offset
-        else:
-            size = min(size, len(self))
-
-        block_index = self._blocks.index_le(size)
-
-        # If file is empty, do nothing
-        if block_index == -1:
-            return
-
-        block_offset, block = self._blocks[block_index]
-        # We truncate before last block…
-        if block_index != len(self._blocks) - 1:
-            # … so delete all blocks after block_index
-            del self._blocks[block_index + 1:]
-        # Now truncate our block
-        if size == block_offset:
-            del self._blocks[block_index]
-        else:
-            self._blocks[block_index] = (block_offset, block[:size - block_offset])
-
-        self._length = size
-        self._offset = min(self._offset, self._length)
-
-    def write(self, s):
-        self[self._offset] = s
-
-    def read(self, size=None):
-        if size < 0:
-            end = len(self)
-        else:
-            end = min(self._offset + size, len(self))
-        read = self[self._offset:end]
-        self._offset = end
-        return read
 
     def insert(self, index, object):
         self[index] = object
@@ -306,61 +263,69 @@ class lrope(collections.MutableSequence):
         return self._length
 
     def __delitem__(self, key):
-        raise NotImplementedError
+        if not isinstance(key, slice):
+            key = slice(key, key + 1)
+        self[key] = ""
 
-    def __setitem__(self, start, value):
-        if not isinstance(start, int):
-            raise ValueError("key must be int")
+    def __setitem__(self, key, value):
+        # Remember that:
+        # x[N] is insertion
+        # x[N:M] is overwriting from N to M
+        # x[N:] is overwriting from N to the end
+        # etc
+        if not isinstance(key, slice):
+            key = slice(key, key)
 
-        stop = start + len(value)
+        start, stop, step = key.indices(len(self))
 
-        if start == stop:
-            return
+        if step != 1:
+            raise ValueError("steps other than 1 are not supported")
 
-        first_block_index = self._blocks.index_le(start)
-        last_block_index = self._blocks.index_le(stop - 1)
+        # if start != stop or start == stop == 0: this is replacement
+        # else: this is insertion
+        if start != stop or start == 0:
+            first_block_index = self._blocks.index_le(start)
+            last_block_index = self._blocks.index_le(stop - 1)
 
-        # The len(self) only changes if we modify the last block
-        if last_block_index == len(self._blocks) - 1:
-            size_may_have_changed = True
-        else:
-            size_may_have_changed = False
-
-        if first_block_index == -1:
-            # This happens when the object has been created empty
-            self._blocks.insert((0, value))
-        elif first_block_index == last_block_index:
-            offset, block = self._blocks[first_block_index]
-            self._blocks[first_block_index] = \
-                (offset, block[:start - offset] + value + block[stop - offset:])
-        else:
-            first_block_offset, first_block = self._blocks[first_block_index]
-            last_block_offset, last_block = self._blocks[last_block_index]
-
-            # Delete block between them
-            if last_block_index - first_block_offset > 1:
-                del self._blocks[first_block_index + 1:last_block_index]
-
-            # Truncate the first block end
-            if start == first_block_offset:
-                del self._blocks[first_block_index]
-                first_block_index -= 1
+            if first_block_index == -1:
+                # -1? This happens when the object has been created empty
+                if start != 0:
+                    raise IndexError("Trying to insert at index %d but this rope is empty" % start)
+                self._blocks.insert((0, value))
+            elif first_block_index == last_block_index:
+                offset, block = self._blocks[first_block_index]
+                self._blocks[first_block_index] = \
+                    (offset, block[:start - offset] + value + block[stop - offset:])
             else:
-                self._blocks[first_block_index] = (first_block_offset, first_block[:start - first_block_offset])
+                first_block_offset, first_block = self._blocks[first_block_index]
+                last_block_offset, last_block = self._blocks[last_block_index]
 
-            # Truncate the last block start
-            if stop >= last_block_offset + len(last_block):
-                del self._blocks[first_block_index + 1]
-            else:
-                self._blocks[last_block_index] = (stop, last_block[stop - last_block_offset:])
+                # Delete block between them
+                if last_block_index - first_block_offset > 1:
+                    del self._blocks[first_block_index + 1:last_block_index]
 
-            # Insert the value with its offset
-            self._blocks.insert((start, value))
+                if start == first_block_offset:
+                    del self._blocks[first_block_index]
+                    first_block_index -= 1
+                else:
+                    self._blocks[first_block_index] = (first_block_offset, first_block[:start - first_block_offset])
 
-        # The len(self) only changes if we modified the last block
-        if size_may_have_changed:
-            offset, block = self._blocks[len(self._blocks) - 1]
-            self._length = offset + len(block)
+                if stop >= last_block_offset + len(last_block):
+                    # Truncate the first block end
+                    del self._blocks[first_block_index + 1]
+                    # Insert the value with its offset
+                    self._blocks.insert((start, value))
+                else:
+                    # Truncate the last block beginning
+                    self._blocks[last_block_index] = (stop, last_block[stop - last_block_offset:])
+                    # Insert the value with its offset
+                    self._blocks.insert((start, value))
+        else:
+            raise ValueError("insertion is not supported")
+
+        # Recompute length
+        offset, block = self._blocks[len(self._blocks) - 1]
+        self._length = offset + len(block)
 
     def __getitem__(self, key):
         if not isinstance(key, slice):
