@@ -281,9 +281,9 @@ class lrope(collections.MutableSequence):
         if step != 1:
             raise ValueError("steps other than 1 are not supported")
 
-        # if start != stop or start == stop == 0: this is replacement
+        # if start != stop: this is replacement
         # else: this is insertion
-        if start != stop or start == 0:
+        if start != stop:
             first_block_index = self._blocks.index_le(start)
             last_block_index = self._blocks.index_le(stop - 1)
 
@@ -320,8 +320,13 @@ class lrope(collections.MutableSequence):
                     self._blocks[last_block_index] = (stop, last_block[stop - last_block_offset:])
                     # Insert the value with its offset
                     self._blocks.insert((start, value))
+        elif start == 0:
+            # Insertion at the beginning, easy case, we handle it.
+            self._blocks.insert((0, value))
+            for idx, (oldoffset, block) in enumerate(self._blocks[1:], 1):
+                self._blocks[idx] = (oldoffset + len(value), block)
         else:
-            raise ValueError("insertion is not supported")
+            raise ValueError("insertion at index != 0 is not supported")
 
         # Recompute length
         offset, block = self._blocks[len(self._blocks) - 1]
