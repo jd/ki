@@ -132,6 +132,8 @@ class TestUtils(unittest.TestCase):
         x[0:] = "bonjour"
         del x[3:]
         self.assert_(str(x) == "bon")
+        del x[0:]
+        x[0:5] = "Hiworld"
 
 if __name__ == '__main__':
     unittest.main()
