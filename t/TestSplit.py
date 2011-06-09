@@ -2,7 +2,7 @@
 
 import unittest
 import random
-from nodlehs.split import split
+from ki.split import split
 
 
 class RandomizedDataFile(object):

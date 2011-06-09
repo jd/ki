@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# nodlehs.split -- Bup (rsync) based file split handling
+# ki.split -- Bup (rsync) based file split handling
 #
 #    Copyright © 2011  Julien Danjou <julien@danjou.info>
 #

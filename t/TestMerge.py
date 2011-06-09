@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
-from nodlehs.merge import *
+from ki.merge import *
 
 class TestMerge(unittest.TestCase):
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# nodlehs.storage -- Git based file system storage
+# ki.storage -- Git based file system storage
 #
 #    Copyright © 2011  Julien Danjou <julien@danjou.info>
 #
@@ -24,7 +24,7 @@ from .config import Configurable, Config, BUS_INTERFACE
 from .objects import Record, FileBlock, FetchError
 from .remote import Remote, Syncer
 from .commiter import TimeCommiter
-from .fs import NodlehsFuse
+from .fs import KiFuse
 from dulwich.repo import Repo, BASE_DIRECTORIES, OBJECTDIR, DiskObjectStore
 from dulwich.client import UpdateRefsError
 from dulwich.objects import Commit, Blob
@@ -35,7 +35,7 @@ import xdg.BaseDirectory
 import threading
 import dbus.service
 
-BUS_PATH = "/org/naquadah/Nodlehs"
+BUS_PATH = "/org/naquadah/Ki"
 
 _storage_manager = None
 
@@ -57,7 +57,7 @@ class StorageManager(dbus.service.Object):
 
     def create_storage(self, path=None):
         if path is None:
-            path = xdg.BaseDirectory.save_data_path("nodlehs/storage")
+            path = xdg.BaseDirectory.save_data_path("ki/storage")
         if len(os.listdir(path)) is 0:
             return Storage.init_bare(self.bus, path)
         s = Storage(self.bus, path)
@@ -297,7 +297,7 @@ class Box(threading.Thread, dbus.service.Object):
                                      "%s/%s" % (storage.__dbus_object_path__, name))
         threading.Thread.__init__(self, name="Box %s on Storage %s" % (name, storage.path))
         self.daemon = True
-        self.fuse = NodlehsFuse(self)
+        self.fuse = KiFuse(self)
         if create:
             self.head = Record(self.storage)
         else:

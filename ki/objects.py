@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# nodlehs.objects -- Stored objects
+# ki.objects -- Stored objects
 #
 #    Copyright © 2011  Julien Danjou <julien@danjou.info>
 #
@@ -556,8 +556,8 @@ class Record(Storable):
             self._object.author = "%s <%s@%s>" % (passwd.pw_gecos.split(",")[0],
                                                   passwd.pw_name,
                                                   socket.getfqdn())
-            self._object.committer = "Nodlehs <nodlehs@naquadah.org>"
-            self._object.message = "Nodlehs auto-commit"
+            self._object.committer = "Ki <ki@naquadah.org>"
+            self._object.message = "Ki auto-commit"
             self.update_timestamp()
         self._parents = OrderedSet([ Record(storage, storage[parent]) for parent in self._object.parents ])
         self.root = Directory(storage, self._object.tree)

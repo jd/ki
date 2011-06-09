@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# nodlehs.merge -- Merge files
+# ki.merge -- Merge files
 #
 #    Copyright © 2011  Julien Danjou <julien@danjou.info>
 #

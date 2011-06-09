@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# nodlehs -- Distributed file system
+# ki.commiter -- Commiter objects
 #
 #    Copyright © 2011  Julien Danjou <julien@danjou.info>
 #
@@ -18,12 +18,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import nodlehs.storage
-import dbus.glib
-import gobject
+from .utils import *
 
-gobject.threads_init()
-dbus.glib.init_threads()
-dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-nodlehs.storage.get_storage_manager(dbus.service.BusName(nodlehs.storage.BUS_INTERFACE, dbus.SessionBus()))
-gobject.MainLoop().run()
+
+class TimeCommiter(RepeatTimer):
+    """A commiter that commit every N seconds."""
+
+    def __init__(self, box, time):
+        super(TimeCommiter, self).__init__(time, box.Commit)
+        self.daemon = True

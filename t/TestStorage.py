@@ -7,8 +7,8 @@ import time
 import shutil
 import dbus.mainloop.glib
 import dbus.service
-from nodlehs.storage import *
-from nodlehs.objects import File
+from ki.storage import *
+from ki.objects import File
 from dulwich.objects import *
 
 

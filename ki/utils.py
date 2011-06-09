@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# nodlehs.utils -- Nodlehs utility library
+# ki.utils -- Ki utility library
 #
 #    Copyright © 2011  Julien Danjou <julien@danjou.info>
 #

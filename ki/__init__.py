@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# nodlehs.commiter -- Commiter objects
+# ki -- Distributed file system
 #
 #    Copyright © 2011  Julien Danjou <julien@danjou.info>
 #
@@ -18,12 +18,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .utils import *
+__author__ = "Julien Danjou <julien@danjou.info>"
 
+import storage
+import objects
+import remote
+import utils
 
-class TimeCommiter(RepeatTimer):
-    """A commiter that commit every N seconds."""
-
-    def __init__(self, box, time):
-        super(TimeCommiter, self).__init__(time, box.Commit)
-        self.daemon = True

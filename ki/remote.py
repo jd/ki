@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# nodlehs.remote -- Git based file system storage remote access
+# ki.remote -- Git based file system storage remote access
 #
 #    Copyright © 2011  Julien Danjou <julien@danjou.info>
 #

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# nodlehs-client -- Distributed file system client
+# ki-client -- Distributed file system client
 #
 #    Copyright © 2011  Julien Danjou <julien@danjou.info>
 #
@@ -21,7 +21,7 @@
 import sys
 import os
 import dbus
-import nodlehs.storage
+import ki.storage
 import argparse
 import tempfile
 import time
@@ -44,7 +44,7 @@ def _edit_with_tempfile(s, suffix=""):
 
 def recordlist(box, **kwargs):
     box_path = storage.GetBox(box)
-    for (sha, commit_time) in bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).RecordList():
+    for (sha, commit_time) in bus.get_object(ki.storage.BUS_INTERFACE, box_path).RecordList():
         print "%s %s" % (sha, time.strftime("%a, %d %b %Y %H:%M:%S %z", time.localtime(commit_time)))
 
 
@@ -71,7 +71,7 @@ def remote_remove(name, **kwargs):
 
 def remote_list(**kwargs):
     for item in storage.ListRemotes():
-        r = bus.get_object(nodlehs.storage.BUS_INTERFACE, item)
+        r = bus.get_object(ki.storage.BUS_INTERFACE, item)
         print "%s:" % r.GetName()
         print "    ID: %s" % r.GetID()
         print "    URL: %s" % r.GetURL()
@@ -79,7 +79,7 @@ def remote_list(**kwargs):
 
 
 def _remote_name_to_obj(name):
-    return bus.get_object(nodlehs.storage.BUS_INTERFACE,
+    return bus.get_object(ki.storage.BUS_INTERFACE,
                        "%s/remotes/%s" % (storage.__dbus_object_path__, name))
 
 
@@ -104,7 +104,7 @@ def box_create(name, **kwargs):
 
 def box_commit(name, **kwargs):
     box_path = storage.GetBox(name)
-    bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).Commit()
+    bus.get_object(ki.storage.BUS_INTERFACE, box_path).Commit()
 
 
 def box_list(**kwargs):
@@ -114,7 +114,7 @@ def box_list(**kwargs):
 
 def box_mount(name, mountpoint, **kwargs):
     box_path = storage.GetBox(name)
-    bus.get_object(nodlehs.storage.BUS_INTERFACE, box_path).Mount(mountpoint)
+    bus.get_object(ki.storage.BUS_INTERFACE, box_path).Mount(mountpoint)
 
 
 parser = argparse.ArgumentParser()
@@ -202,13 +202,13 @@ args = parser.parse_args()
 
 # Now connect.
 bus = dbus.SessionBus()
-storage_manager = bus.get_object(nodlehs.storage.BUS_INTERFACE,
-                                 "%s/StorageManager" % nodlehs.storage.BUS_PATH)
+storage_manager = bus.get_object(ki.storage.BUS_INTERFACE,
+                                 "%s/StorageManager" % ki.storage.BUS_PATH)
 if args.storage is not None:
     storage_path = storage_manager.GetStorage(args.storage)
 else:
     storage_path = storage_manager.GetUserStorage()
-storage = bus.get_object(nodlehs.storage.BUS_INTERFACE, storage_path)
+storage = bus.get_object(ki.storage.BUS_INTERFACE, storage_path)
 
 args.action(**args.__dict__)
 

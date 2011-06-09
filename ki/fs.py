@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# nodlehs.fs -- Fuse based file system
+# ki.fs -- Fuse based file system
 #
 #    Copyright © 2011  Julien Danjou <julien@danjou.info>
 #
@@ -45,14 +45,14 @@ class FDStore(dict):
             self[k] = None
 
 
-class NodlehsFuse(fuse.Operations):
-    """The Nodlehs file system."""
+class KiFuse(fuse.Operations):
+    """The Ki file system."""
 
     def __init__(self, box):
         self.start_time = time.time()
         self.box = box
         self.fds = FDStore()
-        super(NodlehsFuse, self).__init__()
+        super(KiFuse, self).__init__()
 
     def access(self, path, amode):
         try:

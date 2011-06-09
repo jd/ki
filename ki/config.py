@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# nodlehs.config -- Configuration handling
+# ki.config -- Configuration handling
 #
 #    Copyright © 2011  Julien Danjou <julien@danjou.info>
 #
@@ -22,7 +22,7 @@ import json
 from .objects import FileBlock, Storable
 import dbus.service
 
-BUS_INTERFACE = "org.naquadah.Nodlehs"
+BUS_INTERFACE = "org.naquadah.Ki"
 
 
 class Config(FileBlock):

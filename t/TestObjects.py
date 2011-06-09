@@ -5,8 +5,8 @@ import tempfile
 import os
 import shutil
 import dbus.service
-from nodlehs.storage import Storage
-from nodlehs.objects import *
+from ki.storage import Storage
+from ki.objects import *
 from dulwich.objects import *
 
 from TestStorage import TestUsingStorage

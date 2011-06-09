@@ -3,7 +3,7 @@
 import unittest
 import time
 import operator
-from nodlehs.utils import *
+from ki.utils import *
 
 class TestUtils(unittest.TestCase):
 

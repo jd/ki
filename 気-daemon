@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# nodlehs -- Distributed file system
+# ki -- Distributed file system
 #
 #    Copyright © 2011  Julien Danjou <julien@danjou.info>
 #
@@ -18,10 +18,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__author__ = "Julien Danjou <julien@danjou.info>"
+import ki.storage
+import dbus.glib
+import gobject
 
-import storage
-import objects
-import remote
-import utils
-
+gobject.threads_init()
+dbus.glib.init_threads()
+dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+ki.storage.get_storage_manager(dbus.service.BusName(ki.storage.BUS_INTERFACE, dbus.SessionBus()))
+gobject.MainLoop().run()
