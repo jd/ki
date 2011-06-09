@@ -320,8 +320,8 @@ class lrope(collections.MutableSequence):
                     self._blocks[last_block_index] = (stop, last_block[stop - last_block_offset:])
                     # Insert the value with its offset
                     self._blocks.insert((start, value))
-        elif start == 0:
-            # Insertion at the beginning, easy case, we handle it.
+        elif start == 0 or start == len(self):
+            # Insertion at the beginning/ending, easy case, we handle it.
             self._blocks.insert((0, value))
             for idx, (oldoffset, block) in enumerate(self._blocks[1:], 1):
                 self._blocks[idx] = (oldoffset + len(value), block)
