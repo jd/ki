@@ -4,7 +4,7 @@ import unittest
 import tempfile
 import os
 import shutil
-import dbus.service
+from TestSplit import RandomizedDataFile
 from ki.storage import Storage
 from ki.objects import *
 from dulwich.objects import *
@@ -189,6 +189,22 @@ class TestObjects(TestUsingStorage):
         self.assert_(len(f) == 3)
         del f[:]
         self.assert_(f[:] == "")
+
+    def test_File_id(self):
+        f = File(self.storage)
+        f[0:] = RandomizedDataFile().read()
+        x = f.id()
+        self.assert_(f.id() == x)
+        f[1:5] = "i"
+        self.assert_(f.lmo == 1)
+        self.assert_(f.id() != x)
+        self.assert_(f.lmo == None)
+        b = f.blocks
+        self.assert_(f.lmo == None)
+        f[4:5] = "z"
+        self.assert_(f.lmo == 4)
+        self.assert_(f.blocks != b)
+        self.assert_(f.lmo == None)
 
     def test_File_merge(self):
         base = File(self.storage)
