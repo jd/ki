@@ -460,6 +460,8 @@ class File(Storable):
         return self._lazy_data
 
     def _update_lmo(self, offset):
+        if isinstance(offset, slice):
+            offset, _, _ = offset.indices(len(self))
         if self.lmo is None or offset < self.lmo:
             self.lmo = offset
 
