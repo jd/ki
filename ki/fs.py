@@ -253,6 +253,7 @@ class KiFuse(fuse.Operations):
         except FetchError:
             raise fuse.FuseOSError(errno.EIO)
         child[offset] = data
+        return len(data)
 
     @rw
     def truncate(self, path, length, fh=None):
