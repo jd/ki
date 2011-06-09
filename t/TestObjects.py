@@ -206,6 +206,15 @@ class TestObjects(TestUsingStorage):
         self.assert_(f.blocks != b)
         self.assert_(f.lmo == None)
 
+    def test_File_write(self):
+        f = File(self.storage)
+        f[0:7] = "helloworld"
+        self.assert_(len(f) == 7)
+        f[7:] = "heyohhe"
+        self.assert_(len(f) == 14)
+        del f[4:10]
+        self.assert_(len(f) == 10)
+
     def test_File_merge(self):
         base = File(self.storage)
         base[0] = "hello\nworld\nhow are you?\n"

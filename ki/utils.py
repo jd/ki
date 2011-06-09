@@ -269,12 +269,12 @@ class lrope(collections.MutableSequence):
 
     def __setitem__(self, key, value):
         # Remember that:
-        # x[N] is insertion
+        # x[N] is overwriting from N to N+1
         # x[N:M] is overwriting from N to M
         # x[N:] is overwriting from N to the end
         # etc
         if not isinstance(key, slice):
-            key = slice(key, key)
+            key = slice(key, key + len(value))
 
         start, stop, step = key.indices(len(self))
 
@@ -291,7 +291,7 @@ class lrope(collections.MutableSequence):
                 # -1? This happens when the object has been created empty
                 if start != 0:
                     raise IndexError("Trying to insert at index %d but this rope is empty" % start)
-                self._blocks.insert((0, value))
+                self._blocks.insert((0, value[0:stop]))
             elif first_block_index == last_block_index:
                 offset, block = self._blocks[first_block_index]
                 self._blocks[first_block_index] = \
@@ -322,11 +322,16 @@ class lrope(collections.MutableSequence):
                     self._blocks.insert((start, value))
         elif start == 0 or start == len(self):
             # Insertion at the beginning/ending, easy case, we handle it.
-            self._blocks.insert((0, value))
-            for idx, (oldoffset, block) in enumerate(self._blocks[1:], 1):
+            # insert (start, value[0:requested stop offset - start offset])
+            if key.stop != None:
+                value_length = key.stop - start
+            else:
+                value_length = None
+            where = self._blocks.insert((start, value[0:value_length]))
+            for idx, (oldoffset, block) in enumerate(self._blocks[where + 1:], where + 1):
                 self._blocks[idx] = (oldoffset + len(value), block)
         else:
-            raise ValueError("insertion at index != 0 is not supported")
+            raise RuntimeError("that should not happens")
 
         # Recompute length
         offset, block = self._blocks[len(self._blocks) - 1]
