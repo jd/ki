@@ -436,5 +436,5 @@ class Box(threading.Thread, dbus.service.Object):
     def RecordList(self):
         """Return an array of struct containing (sha, commit time)."""
         return [ (commit.id(), commit.object.commit_time)
-                 for commit_set in self.record.commit_history_list()
+                 for commit_set in self.record.history()
                  for commit in commit_set ]
