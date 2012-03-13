@@ -20,7 +20,7 @@
 
 import threading
 from .config import Configurable, Config, BUS_INTERFACE
-from .objects import FileBlock
+from .objects import FileBlock, FetchError
 from dulwich.client import get_transport_and_path
 from dulwich.errors import HangupException
 import dbus.service
